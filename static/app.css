@@ -141,7 +141,7 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .cat-row { display: grid; grid-template-columns: 72px 1fr 90px; align-items: center; gap: 10px; }
 .cat-name { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat-track { height: 10px; border-radius: 6px; background: var(--primary-weak); overflow: hidden; }
-.cat-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--row-color, var(--accent)), color-mix(in srgb, var(--row-color, var(--accent)) 72%, #8b5cf6)); }
+.cat-fill { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--row-color, var(--accent)), color-mix(in srgb, var(--row-color, var(--accent)) 72%, #8b5cf6)); }
 .cat-amount { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ---------- 汇率小卡（v1.2 从顶栏挪出） ---------- */
