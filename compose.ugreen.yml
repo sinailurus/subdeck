@@ -1,0 +1,17 @@
+# SubDeck · 绿联 UGOS「项目」部署模板
+# 用法：绿联 Docker → 项目 → 新建项目 → 本文件整段粘贴进「Compose 配置」→ 只改 AUTH_PASSWORD → 部署
+# 详细步骤与注意事项见 README「绿联 UGOS」小节
+services:
+  subdeck:
+    image: ghcr.nju.edu.cn/sinailurus/subdeck:latest   # 国内默认走南大代理；可直连 ghcr.io 时改成 ghcr.io/sinailurus/subdeck:latest
+    user: "0:0"                                         # 必须保留：入口脚本以 root 自动修复数据目录权限后降权运行
+    container_name: subdeck
+    restart: unless-stopped
+    ports:
+      - "8300:8000"                                     # 左侧端口被占用就换，如 "8301:8000"
+    environment:
+      - TZ=Asia/Shanghai
+      - DATA_DIR=/data
+      - AUTH_PASSWORD=请改成你自己的登录密码            # ← 必改：网页登录密码，切勿保留默认值
+    volumes:
+      - ./data:/data                                    # 数据目录（数据库/密钥/Logo图片），随项目文件夹存放
