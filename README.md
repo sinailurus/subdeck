@@ -41,6 +41,8 @@ docker compose up -d        # 默认使用 8300 端口
 
 访问 `http://NAS_IP:8300`。
 
+> **NAS 权限提示（绿联 / 群晖等必读）**：请保持或恢复 compose 中的 `user: "0:0"`。程序入口脚本会先用 root 自动修复 `/data` 目录属主（治 bind-mount 权限不匹配），再降权为普通用户运行服务进程——root 仅存在于启动瞬间，服务本身不以 root 跑。若容器以非 root 启动而数据目录属主不符，会报 `PermissionError: '/data/logos'` 并重启循环。
+
 ### 群晖 DSM（Container Manager）
 
 1. 打开 **File Station**，在任意共享文件夹新建 `subdeck` 目录，把项目文件上传进去
