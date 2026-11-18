@@ -150,11 +150,12 @@ async function loadAll() {
 let currencyOptionsReady = false;
 async function fillCurrencyOptions() {
   if (currencyOptionsReady) return;
-  const sel = $("#f-currency");
-  if (!sel || sel.options.length) { currencyOptionsReady = true; return; }
+  const list = $("#currency-list");
+  if (!list || list.options.length) { currencyOptionsReady = true; return; }
   try {
     const r = await api("/api/currencies");
-    sel.innerHTML = r.currencies.map((c) => `<option value="${c}">${c}</option>`).join("");
+    // v1.6.1 币种放开：ECB 30 种作为 datalist 提示项，其余小众币种可自由输入
+    list.innerHTML = r.currencies.map((c) => `<option value="${c}"></option>`).join("");
     currencyOptionsReady = true;
   } catch { /* 失败时保留空表，打开表单时再试 */ }
 }
@@ -701,7 +702,7 @@ $("#sub-form").addEventListener("submit", async (e) => {
   if (!name || amount === "") { toast(t("needNameAmount")); return; }
   const body = {
     name, amount: Number(amount),
-    currency: $("#f-currency").value,
+    currency: $("#f-currency").value.trim().toUpperCase(),
     cycle: $("#f-cycle").value,
     next_billing_date: $("#f-date").value,
     payment_method: document.querySelector('input[name="f-pay"]:checked').value,
@@ -762,7 +763,74 @@ function renderSettings() {
   renderLoginControls();
   renderCatChips();
   renderCategoryOptions();
+  renderCustomRates();   // 手动汇率面板（v1.6.1）
 }
+
+/* ---------------- 手动汇率面板（v1.6.1） ---------------- */
+async function renderCustomRates() {
+  const panel = $("#panel-custom-rates");
+  if (!panel) return;
+  let d;
+  try { d = await api("/api/rates/custom"); } catch { return; }
+  const hasMissing = d.missing.length > 0;
+  const hasCustom = Object.keys(d.custom).length > 0;
+  const superseded = new Set(d.superseded || []);
+  // 三层显隐：无事=整块隐藏；有待折算或已设手动汇率才露面
+  panel.style.display = (hasMissing || hasCustom) ? "" : "none";
+
+  const missBox = $("#custom-rates-missing"), missList = $("#custom-rates-missing-list");
+  missBox.style.display = hasMissing ? "" : "none";
+  if (hasMissing) {
+    $("#custom-rates-missing-title").textContent =
+      `以下 ${d.missing.length} 个币种暂未计入统计（无汇率）`;
+    missList.innerHTML = d.missing.map((c) => `
+      <div class="cr-row" data-cur="${c}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:500;min-width:52px;">${c}</span>
+        <span class="muted small">1 ${c} =</span>
+        <input type="number" class="cr-rate" min="0" step="any" inputmode="decimal"
+               style="width:110px;text-align:right;" placeholder="0.00">
+        <span class="muted small">${d.base_currency}</span>
+        <button class="btn small" data-action="cr-set" data-cur="${c}">折算</button>
+      </div>`).join("");
+  }
+
+  const actBox = $("#custom-rates-active"), actList = $("#custom-rates-active-list");
+  actBox.style.display = hasCustom ? "" : "none";
+  if (hasCustom) {
+    actList.innerHTML = Object.entries(d.custom).map(([c, v]) => {
+      const taken = superseded.has(c);
+      const badge = taken
+        ? `<span class="cr-badge cr-badge-auto">自动汇率已接管</span>`
+        : `<span class="cr-badge cr-badge-manual">手动 · 不自动更新</span>`;
+      return `
+      <div class="cr-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:500;min-width:0;">1 ${c} = ${v} ${d.base_currency}</span>
+        ${badge}
+        <button class="btn small ghost" data-action="cr-del" data-cur="${c}">移除</button>
+      </div>`;
+    }).join("");
+  }
+}
+
+$("#panel-custom-rates").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const cur = btn.dataset.cur;
+  try {
+    if (btn.dataset.action === "cr-set") {
+      const row = btn.closest(".cr-row");
+      const v = parseFloat(row.querySelector(".cr-rate").value);
+      if (!(v > 0)) { toast("请输入大于 0 的汇率"); return; }
+      const d = await api("/api/rates/custom", { method: "POST", body: { currency: cur, rate: v } });
+      toast(`已设置 1 ${cur} = ${d.custom[cur]} ${d.base_currency}`);
+    } else if (btn.dataset.action === "cr-del") {
+      await api(`/api/rates/custom/${cur}`, { method: "DELETE" });
+      toast(`已移除 ${cur} 的手动汇率`);
+    }
+    await refreshData();      // 统计金额实时更新
+    renderCustomRates();      // 面板刷新（含空态隐藏）
+  } catch (err) { toast(err.message || "操作失败"); }
+});
 
 /* ---------------- 登录页设置面板（v1.5.0） ---------------- */
 function renderLoginControls() {
@@ -1065,11 +1133,15 @@ $("#set-icon-file").addEventListener("change", async (e) => {
 
 $("#btn-save-settings").addEventListener("click", async () => {
   try {
+    const oldBase = state.settings.base_currency;
     state.settings = await api("/api/settings", { method: "PUT", body: {
       base_currency: $("#set-base-currency").value,
       remind_days: Number($("#set-remind-days").value),
     }});
     toast(t("settingsSaved"));
+    if (state.settings.base_currency !== oldBase) {
+      toast(`基准币种已切换为 ${state.settings.base_currency}，手动汇率已清空（如有请重新填写）`);
+    }
     await refreshData(); renderAll();
   } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
 });

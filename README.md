@@ -27,9 +27,9 @@
 
 ## 快速开始
 
-### 方式一：Windows 一键部署包（没有 NAS / 不会 Docker）
+### 方式一：Windows / macOS 一键部署包（没有 NAS / 不会 Docker）
 
-到 [Releases](https://github.com/sinailurus/subdeck/releases) 页面下载最新版 `SubDeck-*-windows-x64.zip` → 解压 → 双击 `SubDeck.exe` → 浏览器自动打开即可使用。数据目录、访问密码、端口在压缩包内的 `subdeck.ini` 里改（有中文注释），详见包内「使用说明.txt」。需要 Windows 10 / 11（64 位）。
+到 [Releases](https://github.com/sinailurus/subdeck/releases) 页面下载最新版压缩包 → 解压 → 双击运行（Windows 为 `SubDeck.exe`；macOS 为 `SubDeck`，首次打开需在「系统设置 → 隐私与安全性」放行）→ 浏览器自动打开即可使用。数据目录、访问密码、端口在压缩包内的 `subdeck.ini` 里改（有中文注释），详见包内说明文件。macOS 请按芯片选择 apple-silicon（M 系列）或 intel 包。
 
 ### 方式二：使用预构建镜像（NAS / Docker 用户，推荐）
 

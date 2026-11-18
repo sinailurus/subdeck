@@ -380,6 +380,55 @@ def login_throttle():
     assert isinstance(b, list), b
 check("登录限速防暴力破解", login_throttle)
 
+# ---- v1.6.1 币种放开 + 手动汇率 ----
+def custom_rates_flow():
+    """放开币种→USDT订阅缺汇率→手动补→统计计入→校验拦截→移除→改基准币清空。
+    放在限速测试后：登录锁定期内用已有会话 cookie 继续，不受影响。"""
+    # 1. 非法币种仍被拒（含特殊字符 / 超长；小写会被后端自动转大写放行）
+    call("POST", "/api/subscriptions", {"name": "bad", "amount": 1, "currency": "US$",
+        "cycle": "monthly", "next_billing_date": "2026-12-01"}, cookie=C, expect=400)
+    call("POST", "/api/subscriptions", {"name": "bad", "amount": 1, "currency": "TOOLONGCODE",
+        "cycle": "monthly", "next_billing_date": "2026-12-01"}, cookie=C, expect=400)
+    # 2. 放开后可创建 USDT 订阅（格式合法但无自动汇率）
+    b, _ = call("POST", "/api/subscriptions", {"name": "AI充值", "amount": 100, "currency": "USDT",
+        "cycle": "monthly", "next_billing_date": "2026-12-20", "payment_method": "auto"}, cookie=C)
+    ids["usdt"] = b["id"]
+    assert b["amount_converted"] is None, b
+    # 3. 面板：missing 含 USDT
+    d, _ = call("GET", "/api/rates/custom", cookie=C)
+    assert "USDT" in d["missing"], d
+    # 4. 录入手动汇率：1 USDT = 7.24 基准币 → 折算恢复（100 USDT = 724 基准币）
+    d, _ = call("POST", "/api/rates/custom", {"currency": "USDT", "rate": 7.24}, cookie=C)
+    assert d["custom"].get("USDT") == 7.24 and "USDT" not in d["missing"], d
+    stats, _ = call("GET", "/api/stats", cookie=C)
+    assert "USDT" not in stats["missing_rate_currencies"], stats
+    subs, _ = call("GET", "/api/subscriptions", cookie=C)
+    usdt = next(s for s in subs if s["id"] == ids["usdt"])
+    assert usdt["amount_converted"] == round(100 * 7.24, 2), usdt   # 100 USDT × 7.24 = 724
+    # 5. ECB 已覆盖的币种禁止手动录入
+    call("POST", "/api/rates/custom", {"currency": "USD", "rate": 7.0}, cookie=C, expect=400)
+    call("POST", "/api/rates/custom", {"currency": "CNY", "rate": 1.0}, cookie=C, expect=400)
+    # 6. 非法值拒绝
+    call("POST", "/api/rates/custom", {"currency": "BTC", "rate": -1}, cookie=C, expect=400)
+    call("POST", "/api/rates/custom", {"currency": "BTC", "rate": 0}, cookie=C, expect=400)
+    call("POST", "/api/rates/custom", {"currency": "btc1!", "rate": 1}, cookie=C, expect=400)
+    # 7. 删除手动汇率 → 回落未计入
+    d, _ = call("DELETE", "/api/rates/custom/USDT", cookie=C)
+    assert "USDT" in d["missing"], d
+    call("DELETE", "/api/rates/custom/USDT", cookie=C, expect=404)
+    # 8. 重新补上（供基准币变更测试用），再改基准币 → 手动汇率清空 + missing 恢复
+    call("POST", "/api/rates/custom", {"currency": "USDT", "rate": 7.24}, cookie=C)
+    d, _ = call("PUT", "/api/settings", {"base_currency": "USD"}, cookie=C)
+    assert d["base_currency"] == "USD", d
+    d, _ = call("GET", "/api/rates/custom", cookie=C)
+    assert d["custom"] == {} and "USDT" in d["missing"], d
+    # 9. 清理：切回 CNY（同时验证变更链路再跑一次），删测试订阅
+    call("PUT", "/api/settings", {"base_currency": "CNY"}, cookie=C)
+    call("DELETE", f"/api/subscriptions/{ids['usdt']}", cookie=C)
+    d, _ = call("GET", "/api/rates/custom", cookie=C)
+    assert d["custom"] == {} and d["missing"] == [], d
+check("币种放开+手动汇率全链路", custom_rates_flow)
+
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)
 print("ALL TESTS PASSED")

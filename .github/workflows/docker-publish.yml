@@ -99,4 +99,60 @@ jobs:
           files: ${{ steps.zip.outputs.zip }}
           body: |
             **Windows 一键部署包**：下载 SubDeck-*-windows-x64.zip → 解压 → 双击 SubDeck.exe。
-            使用方法见压缩包内「使用说明.txt」。Docker / NAS 用户请继续拉取镜像。
+            **macOS 部署包**（v1.6.1 起）：按芯片下载 apple-silicon（M 系列）或 intel 包 → 解压 → 双击 SubDeck；首次打开需在「系统设置 → 隐私与安全性」放行，详见包内「使用说明-Mac.txt」。
+            使用方法见压缩包内说明文件。Docker / NAS 用户请继续拉取镜像。
+
+  # v1.6.1 起：tag 推送时同时打包 macOS 双架构部署包并挂到 GitHub Release
+  # PyInstaller 不支持交叉编译：Intel 用 macos-15-intel，Apple Silicon 用 macos-15（M1）。
+  # 注：macos-13/14 已于 2026 年退役，勿回退。
+  build-macos:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            arch: intel
+          - os: macos-15
+            arch: apple-silicon
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: PyInstaller 打包
+        run: pyinstaller subdeck.spec --noconfirm
+
+      - name: 组装发行包（SubDeck + ini 模板 + Mac 使用说明）
+        id: zip
+        shell: python
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          import os, zipfile
+          tag = os.environ["TAG_NAME"].lstrip("v")
+          arch = os.environ["ARCH"]
+          out = f"SubDeck-{tag}-macos-{arch}.zip"
+          with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+              z.write("dist/SubDeck", "SubDeck")
+              z.write("packaging/subdeck.ini", "subdeck.ini")
+              z.write("packaging/使用说明-Mac.txt", "使用说明-Mac.txt")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"zip={out}\n")
+          print("built", out)
+
+      - name: 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.zip }}

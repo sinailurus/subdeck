@@ -22,7 +22,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -239,7 +239,17 @@ def put_settings(request: Request, body: dict):
         if "base_currency" in body:
             if body["base_currency"] not in CURRENCIES:
                 raise HTTPException(status_code=400, detail="不支持的币种")
+            old_base = get_setting(conn, "base_currency", "CNY")
             set_setting(conn, "base_currency", body["base_currency"])
+            if body["base_currency"] != old_base:
+                # 基准币变了：手动汇率（相对旧基准）全部失效，清空防糊涂账
+                set_setting(conn, "custom_rates", "{}")
+                # 修存量问题：此前改基准币后 rates 缓存仍按旧基准折算，统计全错。
+                # 现在变更时立即按新基准重拉；拉失败则清空缓存（前端会显示汇率未同步）。
+                ok, info, _ = rates.fetch_and_cache(conn, body["base_currency"])
+                if not ok:
+                    set_setting(conn, "rates", "{}")
+                    set_setting(conn, "rates_updated_at", "")
         if "remind_days" in body:
             days = int(body["remind_days"])
             if not 0 <= days <= 90:
@@ -407,6 +417,70 @@ def refresh_rates(request: Request):
         return {"ok": ok, "info": info, "rates": data}
 
 
+# ---------------------------------------------------------------- 手动汇率 API（v1.6.1）
+
+@app.get("/api/rates/custom")
+def get_custom_rates(request: Request):
+    """手动汇率面板数据：当前生效的手动汇率 + 订阅中缺汇率的币种列表。"""
+    require_auth(request)
+    with db() as conn:
+        return _custom_payload(conn)
+
+
+@app.post("/api/rates/custom")
+def set_custom_rate(request: Request, body: dict):
+    """录入/更新一个手动汇率。body: {"currency": "USDT", "rate": 7.24}
+    rate 语义：1 单位该币种 = rate 基准币。"""
+    require_auth(request)
+    cur = str(body.get("currency") or "").strip().upper()
+    if not _CURRENCY_RE.match(cur):
+        raise HTTPException(status_code=400, detail="币种格式有误（2-8 位大写字母/数字）")
+    try:
+        rate = float(body.get("rate"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="汇率必须是大于 0 的数字")
+    if not 0 < rate <= 1e12:
+        raise HTTPException(status_code=400, detail="汇率需大于 0")
+    with db() as conn:
+        base = get_setting(conn, "base_currency", "CNY")
+        if cur == base:
+            raise HTTPException(status_code=400, detail=f"{cur} 是基准币种，无需手动汇率")
+        r, _ = rates.get_rates(conn)
+        if cur in r:
+            raise HTTPException(status_code=400, detail=f"{cur} 已有自动汇率，无需手动设置")
+        custom = _load_custom_rates(conn)
+        custom[cur] = round(rate, 6)
+        set_setting(conn, "custom_rates", json.dumps(custom, ensure_ascii=False))
+        return _custom_payload(conn)
+
+
+@app.delete("/api/rates/custom/{currency}")
+def delete_custom_rate(request: Request, currency: str):
+    require_auth(request)
+    cur = currency.strip().upper()
+    with db() as conn:
+        custom = _load_custom_rates(conn)
+        if cur not in custom:
+            raise HTTPException(status_code=404, detail="未找到该手动汇率")
+        del custom[cur]
+        set_setting(conn, "custom_rates", json.dumps(custom, ensure_ascii=False))
+        return _custom_payload(conn)
+
+
+def _custom_payload(conn: sqlite3.Connection) -> dict:
+    """set/delete 后返回与 GET 一致的面板数据。"""
+    base = get_setting(conn, "base_currency", "CNY")
+    r, updated = rates.get_rates(conn)
+    custom = _load_custom_rates(conn)
+    cur_in_use = {row["currency"] for row in conn.execute(
+        "SELECT DISTINCT currency FROM subscriptions WHERE active=1")}
+    missing = sorted(c for c in cur_in_use
+                     if c != base and c not in r and c not in custom)
+    superseded = sorted(c for c in custom if c in r)
+    return {"base_currency": base, "custom": custom, "missing": missing,
+            "superseded": superseded, "rates_updated_at": updated}
+
+
 # ---------------------------------------------------------------- 订阅 CRUD
 
 def _validate(body: dict, partial: bool = False) -> dict:
@@ -427,8 +501,10 @@ def _validate(body: dict, partial: bool = False) -> dict:
         out["amount"] = amount
     if not partial or "currency" in body:
         cur = str(body.get("currency") or "CNY").upper()
-        if cur not in CURRENCIES:
-            raise HTTPException(status_code=400, detail=f"暂不支持的币种：{cur}")
+        if not _CURRENCY_RE.match(cur):
+            # v1.6.1 起币种放开：ECB 30 种之外的小众币/加密币也可记录。
+            # 无自动汇率时统计标「未计入」，可用设置页手动汇率补值。
+            raise HTTPException(status_code=400, detail=f"币种格式有误（2-8 位大写字母/数字）：{cur}")
         out["currency"] = cur
     if not partial or "cycle" in body:
         cycle = str(body.get("cycle") or "monthly")
@@ -454,11 +530,37 @@ def _validate(body: dict, partial: bool = False) -> dict:
     return out
 
 
+# ---------------------------------------------------------------- 手动汇率（v1.6.1）
+# 背景：订阅币种已放开（ECB 30 种之外的小众币/加密币也可记录），
+# 这些币种没有自动汇率 → 「未计入统计」。手动汇率给用户一个补值的出口。
+# 存储语义：custom_rates[币种] = 1 单位该币种 = x 基准币（用户输入原样）。
+# 折算语义：rates[y] = 1 单位基准币 = y 该币（取倒数换算）。
+# 优先级：ECB 自动汇率 > 手动汇率（自动源恢复后手动值被接管，不删除，界面标注）。
+# 规则：rates 里已有的币种禁止手动录入（防手动值顶掉自动准确数据）。
+
+_CURRENCY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,7}$")   # 2-8 位大写字母/数字，放开后用于订阅与手动汇率
+
+
+def _load_custom_rates(conn: sqlite3.Connection) -> dict:
+    """custom_rates 存 JSON 对象；坏数据静默回落空字典，绝不让脏设置弄死统计。"""
+    raw = get_setting(conn, "custom_rates", "{}")
+    try:
+        data = json.loads(raw or "{}")
+        return {str(k).upper(): float(v) for k, v in data.items() if isinstance(v, (int, float)) and v > 0}
+    except Exception:
+        return {}
+
+
 def _with_rates(conn: sqlite3.Connection, sub: dict) -> dict:
-    """补上折算金额与月度成本（基于缓存汇率）。"""
+    """补上折算金额与月度成本（自动汇率 + 手动汇率合并）。"""
     r, _ = rates.get_rates(conn)
+    custom = _load_custom_rates(conn)
     base = get_setting(conn, "base_currency", "CNY")
-    sub["amount_converted"] = billing.convert(sub["amount"], sub["currency"], base, r)
+    merged = {**r}
+    for cur, per_unit in custom.items():
+        if cur not in merged:            # 自动汇率优先：rates 已有则手动值不生效（保持待接管状态）
+            merged[cur] = 1.0 / per_unit  # 用户语义 1 币=x 基准 → 折算语义 1 基准=1/x 币
+    sub["amount_converted"] = billing.convert(sub["amount"], sub["currency"], base, merged)
     sub["monthly_cost"] = (
         None if sub["amount_converted"] is None
         else round(sub["amount_converted"] * billing.monthly_factor(sub["cycle"]), 2)
