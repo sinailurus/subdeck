@@ -18,6 +18,13 @@ const STR = {
     noPending: "近几天没有需要付款的订阅 🎉",
     noSubs: "还没有订阅，点「添加订阅」开始记录", noSubsHome: "还没有订阅，去「订阅」页点「添加订阅」开始记录",
     loginFail: "密码错误，请重试", logoutOk: "已退出登录",
+    themeSaved: "主题色已更新", skinSaved: "界面风格已切换", chartSaved: "图表样式已切换",
+    nameSaved: "应用名称已更新", nameInvalid: "应用名称需为 1-12 个字",
+    colorInvalid: "颜色格式应为 #RRGGBB",
+    bgUploaded: "背景图已更新", bgCleared: "已关闭背景图", bgTooBig: "图片不能超过 4MB",
+    iconUploaded: "图标已更新", iconCleared: "已恢复默认图标",
+    uploadFail: "上传失败：", noUpcoming: "未来 30 天没有扣费计划 🎉",
+    catMonthly: "月合计",
   },
 };
 const LANG = "zh";
@@ -42,6 +49,33 @@ const catLabel = (c) => CAT_LABEL[c] || c || "—";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (ch) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 const hashPick = (s) => PALETTE[[...String(s)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % PALETTE.length];
+
+/* 主题色工具：hex → HSL；图表色阶从主题色轮转派生（换主题色图表跟着变，不写死蓝紫） */
+function hexToHsl(hex) {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16) / 255, g = parseInt(m.slice(2, 4), 16) / 255, b = parseInt(m.slice(4, 6), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  let h = 0, s = 0;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, s * 100, l * 100];
+}
+function accentHsl() {
+  const cur = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#4f6ef7";
+  return hexToHsl(cur.startsWith("#") ? cur : "#4f6ef7");
+}
+function catColor(i, n) {
+  const [h, s, l] = accentHsl();
+  const hue = (h + i * (n > 6 ? 26 : 34)) % 360;
+  const sat = Math.min(Math.max(s, 42), 68);
+  const lig = Math.min(Math.max(l, 36), 56);
+  return `hsl(${h + i * (n > 6 ? 26 : 34) | 0} ${sat | 0}% ${lig | 0}%)`;
+}
+const THEME_PRESETS = ["#7c5cff", "#e5484d", "#f59f0a", "#2f9e6e", "#0ea5a4", "#3b82f6", "#d6409f", "#8b5a2b", "#475569"];
 
 function toast(msg, ms = 2200) {
   const el = $("#toast");
@@ -127,10 +161,12 @@ async function refreshData() {
 }
 
 function renderAll() {
-  renderTopbar();
+  applyAppearance();      // 品牌（名称/图标/favicon/主题色/皮肤/背景层）
+  renderRateCard();
   renderStats();
   renderPending();
-  renderCategoryBars();
+  renderCategoryChart();
+  renderTimeline();
   renderSubs();
   renderSettings();
 }
@@ -146,10 +182,49 @@ function switchView(name) {
 document.querySelectorAll(".nav-btn").forEach((b) =>
   b.addEventListener("click", () => switchView(b.dataset.nav)));
 
-/* ---------------- 顶栏 ---------------- */
-function renderTopbar() {
-  $("#rates-updated").textContent =
-    state.ratesInfo.updated_at ? `汇率 ${state.ratesInfo.updated_at}` : "汇率未同步";
+/* ---------------- 顶栏 / 外观应用 ---------------- */
+function renderRateCard() {
+  $("#rates-updated").textContent = state.ratesInfo.updated_at || "未同步";
+}
+
+/* 外观应用：品牌名 / 自定义图标 / favicon / 皮肤 / 主题色 / 背景图层（多端同步的设置驱动） */
+function applyAppearance() {
+  const s = state.settings || {};
+  const name = s.app_name || "SubDeck";
+  $("#brand-name").textContent = name;
+  $("#login-title").textContent = name;
+  document.title = `${name} · 订阅管理`;
+  const setBrand = (el) => {
+    el.innerHTML = s.brand_icon ? `<img src="/api/brand/icon" alt="">` : "S";
+  };
+  [$("#brand-mark"), $("#login-logo"), $("#icon-preview")].forEach(setBrand);
+  const iconHref = s.brand_icon ? `/api/brand/icon` : "/assets/icons/icon-192.png";
+  document.querySelector('link[rel="icon"]').href = iconHref;
+  document.querySelector('link[rel="apple-touch-icon"]').href = iconHref;
+  document.body.dataset.skin = s.skin || "glass";
+  applyAccent();
+  const bg = $("#bg-layer");
+  if (s.bg_image) {
+    bg.classList.add("has-bg-img");
+    bg.style.setProperty("--bg-img", `url("/api/brand/background")`);
+    bg.style.setProperty("--bg-mask-a", (s.bg_mask ?? 35) / 100);
+  } else {
+    bg.classList.remove("has-bg-img");
+    bg.style.removeProperty("--bg-img");
+    bg.style.removeProperty("--bg-mask-a");
+  }
+}
+
+/* 主题色注入：深色模式自动提亮（L+8），并同步浏览器地址栏 theme-color */
+function applyAccent() {
+  const color = state.settings?.theme_color;
+  const rootStyle = document.documentElement.style;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!color) { rootStyle.removeProperty("--accent"); meta.content = "#4f6ef7"; return; }
+  const [h, sa, l] = hexToHsl(color);
+  const lig = document.documentElement.dataset.theme === "dark" ? Math.min(l + 8, 78) : l;
+  rootStyle.setProperty("--accent", `hsl(${h | 0} ${sa | 0}% ${lig | 0}%)`);
+  meta.content = color;
 }
 
 async function refreshRates() {
@@ -169,6 +244,7 @@ $("#btn-refresh-rates").addEventListener("click", refreshRates);
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem("subdeck-theme", theme);
+  if (state.settings) applyAccent();   // 用户主题色随深浅微调
 }
 applyTheme(localStorage.getItem("subdeck-theme") ||
   (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
@@ -211,17 +287,81 @@ function renderPending() {
     : `<div class="pending-empty">${t("noPending")}</div>`;
 }
 
-function renderCategoryBars() {
+function renderCategoryChart() {
   const cats = state.stats.by_category, base = state.settings.base_currency;
+  const box = $("#category-chart");
+  if (!cats.length) { box.innerHTML = `<div class="chart-empty">${t("noSubsHome")}</div>`; return; }
+  const style = state.settings.chart_style || "bars";
+  if (style === "bars") { renderBarsInto(box, cats, base); return; }
+
+  const total = cats.reduce((a, c) => a + c.monthly, 0) || 1;
+  const size = 148, r = 56, cx = size / 2, cy = size / 2;
+  const single = cats.length === 1;
+  let segs = "", acc = 0;
+  cats.forEach((c, i) => {
+    const frac = c.monthly / total;
+    const color = c._color = catColor(i, cats.length);
+    if (single) return;   // 单分类由整圆兜底（弧线端点重合时 path 会退化）
+    const a0 = acc * 2 * Math.PI - Math.PI / 2, a1 = (acc + frac) * 2 * Math.PI - Math.PI / 2;
+    const x0 = (cx + r * Math.cos(a0)).toFixed(2), y0 = (cy + r * Math.sin(a0)).toFixed(2);
+    const x1 = (cx + r * Math.cos(a1)).toFixed(2), y1 = (cy + r * Math.sin(a1)).toFixed(2);
+    const large = frac > .5 ? 1 : 0;
+    segs += style === "donut"
+      ? `<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}" fill="none" stroke="${color}" stroke-width="17"></path>`
+      : `<path d="M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z" fill="${color}"></path>`;
+    acc += frac;
+  });
+  const firstColor = catColor(0, cats.length);
+  const svgBody = single
+    ? (style === "donut"
+        ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${firstColor}" stroke-width="17"></circle>`
+        : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${firstColor}"></circle>`)
+    : segs;
+  const center = style === "donut"
+    ? `<text x="${cx}" y="${cy - 3}" text-anchor="middle" class="donut-center-label">${t("catMonthly")}</text>
+       <text x="${cx}" y="${cy + 15}" text-anchor="middle" font-weight="700" font-size="13" fill="var(--text)">${fmtMoney(total, base)}</text>`
+    : "";
+  box.innerHTML = `
+    <div class="chart-flex">
+      <div class="chart-svg"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="分类月度占比${style === "donut" ? "环形" : "饼"}图">${svgBody}${center}</svg></div>
+      <div class="chart-legend">
+        ${cats.map((c) => `
+          <div class="legend-row">
+            <span class="legend-dot" style="background:${c._color || catColor(0, 1)}"></span>
+            <span class="legend-name">${esc(catLabel(c.category))}</span>
+            <span class="legend-val">${fmtMoney(c.monthly, base)} · ${(c.monthly / total * 100).toFixed(0)}%</span>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+function renderBarsInto(box, cats, base) {
   const max = Math.max(...cats.map((c) => c.monthly), 0.0001);
-  $("#category-bars").innerHTML = cats.length
-    ? cats.map((c) => `
+  box.innerHTML = `<div class="category-bars">` + cats.map((c, i) => `
       <div class="cat-row">
         <span class="cat-name">${esc(catLabel(c.category))}</span>
-        <span class="cat-track"><span class="cat-fill" style="width:${Math.max(c.monthly / max * 100, 4)}%"></span></span>
+        <span class="cat-track"><span class="cat-fill" style="width:${Math.max(c.monthly / max * 100, 4)}%;--row-color:${catColor(i, cats.length)}"></span></span>
         <span class="cat-amount">${fmtMoney(c.monthly, base)}</span>
+      </div>`).join("") + `</div>`;
+}
+
+function renderTimeline() {
+  const list = (state.stats.upcoming || []).filter((s) => s.days_until <= 30);
+  $("#timeline").innerHTML = list.length
+    ? list.map((s) => `
+      <div class="tl-item ${s.days_until === 0 ? "today" : s.days_until === 1 ? "tomorrow" : ""}">
+        <span class="tl-dot"></span>
+        <div class="tl-date">
+          <span class="d">${fmtDate(s.next_billing_date)}</span>
+          <span class="rel">${dueLabel(s.days_until)}</span>
+        </div>
+        <div class="tl-body">
+          ${avatarHTML(s)}
+          <span class="tl-name">${esc(s.name)}</span>
+          <span class="tl-amount">${fmtMoney(s.amount, s.currency)}</span>
+        </div>
       </div>`).join("")
-    : `<div class="pending-empty">${t("noSubsHome")}</div>`;
+    : `<div class="tl-empty">${t("noUpcoming")}</div>`;
 }
 
 /* ---------------- 订阅列表 ---------------- */
@@ -443,7 +583,145 @@ function renderSettings() {
     ? `上次更新：${state.ratesInfo.updated_at}。` : "尚未同步过汇率。";
   api("/api/ics-url").then((r) => { $("#ics-url").value = location.origin + r.url; })
     .catch(() => { $("#ics-url").value = location.origin + "/api/calendar.ics"; });
+  renderAppearanceControls();
 }
+
+/* 外观面板控件赋值（服务端值 → 控件） */
+function renderAppearanceControls() {
+  const s = state.settings;
+  $("#set-app-name").value = s.app_name;
+  $("#theme-color-input").value = s.theme_color || "";
+  document.querySelectorAll('input[name="set-skin"]').forEach((r) => r.checked = r.value === (s.skin || "glass"));
+  document.querySelectorAll("#chart-seg .seg-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.chart === (s.chart_style || "bars")));
+  $("#bg-mask").value = s.bg_mask;
+  $("#bg-mask-value").textContent = `${s.bg_mask}%`;
+  const bgPrev = $("#bg-preview");
+  if (s.bg_image) {
+    bgPrev.style.backgroundImage = `url("/api/brand/background")`;
+    bgPrev.textContent = "";
+  } else { bgPrev.style.backgroundImage = ""; bgPrev.textContent = "未设置背景图"; }
+  renderThemeSwatches();
+}
+
+function renderThemeSwatches() {
+  const cur = state.settings.theme_color || "";
+  $("#theme-swatches").innerHTML =
+    `<button type="button" class="theme-swatch default ${!cur ? "active" : ""}" data-color="" title="默认蓝"></button>` +
+    THEME_PRESETS.map((c) =>
+      `<button type="button" class="theme-swatch ${c === cur ? "active" : ""}" data-color="${c}" style="background:${c}" title="${c}"></button>`
+    ).join("");
+}
+
+/* 外观即改即存：改一项立刻持久化 + 应用，多端下一次打开自动一致 */
+async function saveAppearance(patch, msg) {
+  try {
+    state.settings = await api("/api/settings", { method: "PUT", body: patch });
+    applyAppearance();
+    if ("chart_style" in patch)
+      document.querySelectorAll("#chart-seg .seg-btn").forEach((b) =>
+        b.classList.toggle("active", b.dataset.chart === (state.settings.chart_style || "bars")));
+    if ("theme_color" in patch) renderThemeSwatches();
+    if (msg) toast(msg);
+  } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
+}
+
+$("#theme-swatches").addEventListener("click", (e) => {
+  const sw = e.target.closest(".theme-swatch");
+  if (sw) saveAppearance({ theme_color: sw.dataset.color }, t("themeSaved"));
+});
+$("#theme-color-input").addEventListener("change", (e) => {
+  const v = e.target.value.trim();
+  if (v && !/^#[0-9a-fA-F]{6}$/.test(v)) { toast(t("colorInvalid")); return; }
+  saveAppearance({ theme_color: v }, t("themeSaved"));
+});
+$("#btn-theme-reset").addEventListener("click", () => saveAppearance({ theme_color: "" }, t("themeSaved")));
+$("#skin-row").addEventListener("change", (e) => {
+  if (e.target.name === "set-skin") saveAppearance({ skin: e.target.value }, t("skinSaved"));
+});
+$("#chart-seg").addEventListener("click", (e) => {
+  const btn = e.target.closest(".seg-btn");
+  if (btn) saveAppearance({ chart_style: btn.dataset.chart }, t("chartSaved"));
+});
+$("#set-app-name").addEventListener("change", (e) => {
+  const v = e.target.value.trim();
+  if (!v || v.length > 12) { toast(t("nameInvalid")); return; }
+  saveAppearance({ app_name: v }, t("nameSaved"));
+});
+$("#btn-name-reset").addEventListener("click", () => saveAppearance({ app_name: "SubDeck" }, t("nameSaved")));
+$("#bg-mask").addEventListener("input", (e) => {
+  $("#bg-mask-value").textContent = `${e.target.value}%`;   // 实时预览，不落库
+  $("#bg-layer").style.setProperty("--bg-mask-a", e.target.value / 100);
+});
+$("#bg-mask").addEventListener("change", (e) => saveAppearance({ bg_mask: Number(e.target.value) }));
+$("#btn-bg-clear").addEventListener("click", async () => {
+  try {
+    await api("/api/brand/background", { method: "DELETE" });
+    state.settings.bg_image = "";
+    applyAppearance(); renderAppearanceControls();
+    toast(t("bgCleared"));
+  } catch (err) { if (err.message !== "unauthorized") toast("操作失败：" + err.message); }
+});
+$("#btn-icon-clear").addEventListener("click", async () => {
+  try {
+    await api("/api/brand/icon", { method: "DELETE" });
+    state.settings.brand_icon = "";
+    applyAppearance();
+    toast(t("iconCleared"));
+  } catch (err) { if (err.message !== "unauthorized") toast("操作失败：" + err.message); }
+});
+
+/* 大图自动压缩：长边 ≤1920、JPEG 0.85，手机拍的照片也能直接传 */
+function compressImage(file, maxEdge = 1920, quality = 0.85) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxEdge / Math.max(im.naturalWidth, im.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(im.naturalWidth * scale);
+      canvas.height = Math.round(im.naturalHeight * scale);
+      canvas.getContext("2d").drawImage(im, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => blob ? res(new File([blob], "bg.jpg", { type: "image/jpeg" })) : rej(new Error("compress")),
+        "image/jpeg", quality);
+    };
+    im.onerror = rej;
+    im.src = url;
+  });
+}
+
+$("#set-bg-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) { toast(t("logoInvalid")); return; }
+  if (file.size > 4 * 1024 * 1024) { toast(t("bgTooBig")); return; }
+  try {
+    const fd = new FormData();
+    fd.append("file", await compressImage(file));
+    const r = await api("/api/brand/background", { method: "POST", body: fd });
+    state.settings.bg_image = r.bg_image;
+    applyAppearance(); renderAppearanceControls();
+    toast(t("bgUploaded"));
+  } catch (err) { if (err.message !== "unauthorized") toast(t("uploadFail") + err.message); }
+});
+$("#set-icon-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) { toast(t("logoInvalid")); return; }
+  if (file.size > 2 * 1024 * 1024) { toast(t("logoTooBig")); return; }
+  try {
+    const fd = new FormData();
+    fd.append("file", file);   // 图标保持原图（清晰度优先），大小由后端兜底
+    const r = await api("/api/brand/icon", { method: "POST", body: fd });
+    state.settings.brand_icon = r.brand_icon;
+    applyAppearance();
+    toast(t("iconUploaded"));
+  } catch (err) { if (err.message !== "unauthorized") toast(t("uploadFail") + err.message); }
+});
 
 $("#btn-save-settings").addEventListener("click", async () => {
   try {

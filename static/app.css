@@ -6,13 +6,16 @@
   --text: #1c2333;
   --muted: #7a849e;
   --line: #e6eaf2;
-  --primary: #4f6ef7;
-  --primary-weak: #eef1fe;
+  --accent: #4f6ef7;            /* 主题色：用户设置后由 JS 覆盖（深色模式自动提亮） */
+  --primary: var(--accent);
+  --primary-weak: color-mix(in srgb, var(--accent) 10%, #ffffff);
   --danger: #e5484d;
   --warn: #f59f0a;
   --ok: #2f9e6e;
   --shadow: 0 1px 3px rgba(16, 24, 40, .08);
   --radius: 14px;
+  --gap: 18px;                  /* 模块间距（v1.2 整体 +1 档） */
+  --bg-mask-rgb: 244, 246, 251; /* 背景图遮罩颜色（浅色主题：白雾） */
 }
 [data-theme="dark"] {
   --bg: #14161d;
@@ -20,9 +23,11 @@
   --text: #e7eaf2;
   --muted: #8b93a7;
   --line: #2c313d;
-  --primary: #6d87ff;
-  --primary-weak: #232a44;
+  --accent: #6d87ff;            /* JS 未注入用户色时的深色默认 */
+  --primary: var(--accent);
+  --primary-weak: color-mix(in srgb, var(--accent) 14%, #1d2027);
   --shadow: none;
+  --bg-mask-rgb: 20, 22, 29;    /* 深色主题遮罩：黑雾 */
 }
 
 * { box-sizing: border-box; }
@@ -41,6 +46,26 @@ body {
 .small { font-size: 12.5px; }
 .ta-r { text-align: right; }
 
+/* ---------- 外观背景层（皮肤色晕 / 自定义背景图） ---------- */
+#bg-layer {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(620px 420px at 10% -6%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    radial-gradient(700px 520px at 106% 16%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 72%),
+    radial-gradient(560px 420px at 50% 116%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 74%);
+}
+body[data-skin="solid"] #bg-layer { display: none; }               /* A 实色：无色晕 */
+body[data-skin="glass"] #bg-layer { opacity: .72; }                /* B 点缀玻璃：柔和色晕 */
+body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度玻璃：色晕全开 */
+/* 自定义背景图模式：JS 切换 .has-bg-img 并注入背景 URL；遮罩浓度走 --bg-mask-a */
+#bg-layer.has-bg-img {
+  background-image:
+    linear-gradient(rgba(var(--bg-mask-rgb), var(--bg-mask-a, .35)), rgba(var(--bg-mask-rgb), var(--bg-mask-a, .35))),
+    var(--bg-img);
+  background-size: cover; background-position: center;
+  opacity: 1;
+}
+
 /* ---------- 顶栏 ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 20;
@@ -54,9 +79,11 @@ body {
 .brand-mark {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: 9px;
-  background: linear-gradient(135deg, #4f6ef7, #7b5cf0);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #ffffff));
   color: #fff; font-size: 15px; font-weight: 800;
+  overflow: hidden;
 }
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -68,20 +95,25 @@ body {
 .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
 
 /* ---------- 主体 ---------- */
-.content { width: 100%; max-width: 1060px; margin: 0 auto; padding: 16px 16px 90px; }
+.content { width: 100%; max-width: 1060px; margin: 0 auto; padding: var(--gap) var(--gap) 90px; }
 .view { animation: fadein .18s ease; }
 @keyframes fadein { from { opacity: .4; transform: translateY(4px); } }
 
 .panel {
   background: var(--card); border-radius: var(--radius);
   box-shadow: var(--shadow); border: 1px solid var(--line);
-  padding: 16px; margin-bottom: 16px;
+  padding: var(--gap); margin-bottom: var(--gap);
 }
 .panel h2 { margin: 0 0 12px; font-size: 15.5px; }
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 12px;
+}
+.panel-head h2 { margin: 0; }
 
 /* ---------- 统计卡 ---------- */
 .stat-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: var(--gap);
 }
 .stat-card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
@@ -109,8 +141,66 @@ body {
 .cat-row { display: grid; grid-template-columns: 72px 1fr 90px; align-items: center; gap: 10px; }
 .cat-name { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat-track { height: 10px; border-radius: 6px; background: var(--primary-weak); overflow: hidden; }
-.cat-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #4f6ef7, #7b5cf0); }
+.cat-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--row-color, var(--accent)), color-mix(in srgb, var(--row-color, var(--accent)) 72%, #8b5cf6)); }
 .cat-amount { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- 汇率小卡（v1.2 从顶栏挪出） ---------- */
+.rate-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rate-info { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--muted); }
+.rate-info strong { color: var(--text); font-weight: 600; }
+.rate-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+.rate-card .btn svg { width: 15px; height: 15px; }
+
+/* ---------- 图表切换与环形/饼图 ---------- */
+.seg-control {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--primary-weak); border-radius: 10px;
+}
+.seg-btn {
+  border: none; background: none; cursor: pointer;
+  padding: 5px 12px; border-radius: 8px;
+  font-size: 12.5px; color: var(--muted); font-family: inherit;
+}
+.seg-btn.active { background: var(--card); color: var(--primary); font-weight: 600; box-shadow: var(--shadow); }
+.chart-empty { color: var(--muted); font-size: 13.5px; text-align: center; padding: 14px 0; }
+.chart-flex { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.chart-svg { flex-shrink: 0; }
+.chart-svg svg { display: block; }
+.chart-legend { display: grid; gap: 8px; flex: 1; min-width: 150px; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.legend-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-val { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.donut-center-label { fill: var(--text); font-size: 11px; font-weight: 600; }
+
+/* ---------- 未来 30 天扣费时间线 ---------- */
+.timeline { position: relative; padding-left: 4px; }
+.tl-item {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  padding: 8px 0 8px 26px;
+}
+.tl-item::before {
+  content: ""; position: absolute; left: 9px; top: 0; bottom: 0;
+  width: 2px; background: var(--line);
+}
+.tl-item:first-child::before { top: 50%; }
+.tl-item:last-child::before { bottom: 50%; }
+.tl-dot {
+  position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--card); border: 2.5px solid var(--muted); z-index: 1;
+}
+.tl-item.today .tl-dot { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 18%, var(--card)); }
+.tl-item.tomorrow .tl-dot { border-color: var(--warn); }
+.tl-date { width: 78px; flex-shrink: 0; line-height: 1.35; }
+.tl-date .d { font-weight: 700; font-size: 14px; }
+.tl-item.today .tl-date .d { color: var(--danger); }
+.tl-item.tomorrow .tl-date .d { color: var(--warn); }
+.tl-date .rel { display: block; font-size: 11.5px; color: var(--muted); }
+.tl-body { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.tl-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-amount { margin-left: auto; font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.tl-empty { color: var(--muted); font-size: 13.5px; text-align: center; padding: 14px 0; }
 
 /* ---------- 工具栏 ---------- */
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; align-items: center; }
@@ -260,6 +350,36 @@ body {
 #view-settings .panel { max-width: 640px; }
 #view-settings .btn { max-width: 220px; }
 
+/* ---------- 外观面板控件 ---------- */
+.color-input-row { display: flex; gap: 8px; align-items: center; }
+.color-input-row input {
+  flex: 1; min-width: 0; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  font-size: 14px; background: var(--card); color: var(--text);
+  font-family: ui-monospace, monospace;
+}
+.theme-swatch {
+  width: 30px; height: 30px; border-radius: 10px; cursor: pointer;
+  border: 2px solid transparent; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.theme-swatch.active { border-color: var(--text); }
+.theme-swatch.default {
+  background: linear-gradient(135deg, #4f6ef7 50%, #6d87ff 50%);
+}
+.bg-editor { display: flex; flex-direction: column; gap: 10px; }
+.bg-preview {
+  width: 100%; height: 110px; border-radius: 12px;
+  border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 13px;
+  background-size: cover; background-position: center;
+}
+.brand-icon-preview { width: 44px; height: 44px; border-radius: 13px; font-size: 21px; }
+.mask-row { display: flex; align-items: center; gap: 10px; }
+.mask-row input[type="range"] { flex: 1; accent-color: var(--primary); }
+.mask-row span { min-width: 38px; }
+
 /* ---------- 登录页 ---------- */
 .login-view {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -274,10 +394,12 @@ body {
 .login-card h1 { margin: 0; font-size: 22px; }
 .login-logo {
   width: 60px; height: 60px; margin: 0 auto; border-radius: 18px;
-  background: linear-gradient(135deg, #4f6ef7, #7b5cf0);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #ffffff));
   color: #fff; font-size: 30px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
 }
+.login-logo img { width: 100%; height: 100%; object-fit: cover; }
 .login-card input { padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; background: var(--card); color: var(--text); }
 .login-error { color: var(--danger); font-size: 13px; margin: 0; }
 
@@ -351,3 +473,30 @@ body {
 /* 深浅色图标切换 */
 .i-sun, [data-theme="dark"] .i-moon { display: none; }
 [data-theme="dark"] .i-sun { display: block; }
+
+/* ---------- 三档界面皮肤（A 实色 / B 点缀玻璃 / C 重度玻璃） ----------
+ * 任何皮肤 × 深浅主题 = 6 种显示状态，新增模块需全部自查。
+ * B/C 档的背景色晕见 #bg-layer；此处管理卡片材质。 */
+/* A 实色（solid）：默认卡片样式，无特殊处理 */
+/* B 点缀玻璃（glass，默认）：卡片保持实色，仅顶栏/底栏毛玻璃（已有）——零改动即最稳 */
+/* C 重度玻璃（glassplus，实验性）：大卡片半透明毛玻璃，透出背景层 */
+body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal) {
+  background: color-mix(in srgb, var(--card) 74%, transparent);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+}
+[data-theme="dark"] body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal) {
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+}
+body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal) {
+  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+}
+/* C 档下表单控件/小卡片微透，保持文字可读 */
+body[data-skin="glassplus"] .sub-card,
+body[data-skin="glassplus"] .modal input,
+body[data-skin="glassplus"] .modal select,
+body[data-skin="glassplus"] .modal textarea {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+/* C 档下分段控件底与卡片同透 */
+body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var(--card) 92%, transparent); }

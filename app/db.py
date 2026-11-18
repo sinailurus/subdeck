@@ -9,6 +9,7 @@ DATA_DIR = os.environ.get("DATA_DIR") or os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
 )
 LOGO_DIR = os.path.join(DATA_DIR, "logos")
+BG_DIR = os.path.join(DATA_DIR, "bg")   # 品牌资产：外观背景图 / 应用图标（多端共享）
 
 SCHEMA_VERSION = 1
 
@@ -17,6 +18,7 @@ def init_db() -> None:
     """初始化数据库与目录结构（幂等，可重复执行）。"""
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(LOGO_DIR, exist_ok=True)
+    os.makedirs(BG_DIR, exist_ok=True)
     with db() as conn:
         conn.executescript(
             """
@@ -55,6 +57,14 @@ def init_db() -> None:
                 ("remind_days", "7"),
                 ("rates", "{}"),
                 ("rates_updated_at", ""),
+                # ---- v1.2.0 外观与品牌（多端同步，存后端） ----
+                ("app_name", "SubDeck"),      # 应用名称，≤12 字
+                ("theme_color", ""),          # 主题色 #RRGGBB，空 = 内置默认
+                ("skin", "glass"),            # 皮肤：solid(实色) / glass(点缀玻璃) / glassplus(重度玻璃)
+                ("bg_image", ""),             # 外观背景图文件名，空 = 关闭
+                ("bg_mask", "35"),            # 背景图遮罩浓度 0-85（%）
+                ("chart_style", "bars"),      # 分类占比图：bars / donut / pie
+                ("brand_icon", ""),           # 品牌图标文件名，空 = 默认渐变 S
             ],
         )
 

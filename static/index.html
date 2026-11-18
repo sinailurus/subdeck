@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#4f6ef7">
 <meta name="description" content="SubDeck - 自部署订阅管理">
-<link rel="manifest" href="/assets/manifest.webmanifest">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
 <title>SubDeck · 订阅管理</title>
@@ -13,11 +13,14 @@
 </head>
 <body>
 
+<!-- 外观背景层：皮肤色晕 / 自定义背景图 + 遮罩（由 JS 按设置驱动） -->
+<div id="bg-layer" aria-hidden="true"></div>
+
 <!-- 登录页 -->
 <div id="login-view" class="login-view hidden">
   <form id="login-form" class="login-card">
-    <div class="login-logo">S</div>
-    <h1>SubDeck</h1>
+    <div class="login-logo" id="login-logo">S</div>
+    <h1 id="login-title">SubDeck</h1>
     <p class="muted">请输入访问密码</p>
     <input type="password" id="login-password" placeholder="密码" autocomplete="current-password" required>
     <button type="submit" class="btn primary">进入</button>
@@ -28,17 +31,13 @@
 <!-- 主应用 -->
 <div id="app-view" class="app hidden">
   <header class="topbar">
-    <div class="topbar-brand"><span class="brand-mark">S</span> SubDeck</div>
+    <div class="topbar-brand"><span class="brand-mark" id="brand-mark">S</span><span id="brand-name">SubDeck</span></div>
     <nav class="topnav" aria-label="主导航">
       <button data-nav="dashboard" class="nav-btn">概览</button>
       <button data-nav="subs" class="nav-btn">订阅</button>
       <button data-nav="settings" class="nav-btn">设置</button>
     </nav>
     <div class="topbar-actions">
-      <span id="rates-updated" class="muted small"></span>
-      <button id="refresh-rates" class="icon-btn" title="刷新汇率" aria-label="刷新汇率">
-        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
       <button id="theme-toggle" class="icon-btn" title="切换深浅色" aria-label="切换深浅色">
         <svg class="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -59,9 +58,30 @@
         <h2>待付款区</h2>
         <div id="pending-list" class="pending-list"></div>
       </div>
+      <div class="panel rate-card">
+        <div class="rate-info">
+          <span class="rate-dot"></span>
+          <span class="rate-text">汇率基准更新于 <strong id="rates-updated">--</strong> · 欧洲央行参考汇率</span>
+        </div>
+        <button id="refresh-rates" class="btn small ghost" aria-label="刷新汇率">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          刷新
+        </button>
+      </div>
       <div class="panel">
-        <h2>分类月度占比</h2>
-        <div id="category-bars" class="category-bars"></div>
+        <div class="panel-head">
+          <h2>分类月度占比</h2>
+          <div class="seg-control" id="chart-seg" role="group" aria-label="图表样式">
+            <button type="button" data-chart="bars" class="seg-btn">条形</button>
+            <button type="button" data-chart="donut" class="seg-btn">环形</button>
+            <button type="button" data-chart="pie" class="seg-btn">饼图</button>
+          </div>
+        </div>
+        <div id="category-chart" class="category-chart"></div>
+      </div>
+      <div class="panel">
+        <h2>未来 30 天扣费</h2>
+        <div id="timeline" class="timeline"></div>
       </div>
     </section>
 
@@ -96,6 +116,70 @@
 
     <!-- 设置 -->
     <section id="view-settings" class="view hidden">
+      <div class="panel">
+        <h2>外观</h2>
+        <p class="muted small">所有外观设置保存到服务端，手机 / 电脑 / 平板访问时自动同步，无需逐台设置。</p>
+        <div class="form-row">
+          <label>主题色</label>
+          <div class="swatches" id="theme-swatches"></div>
+          <div class="color-input-row">
+            <input type="text" id="theme-color-input" placeholder="自定义 #RRGGBB" maxlength="7" spellcheck="false">
+            <button type="button" id="btn-theme-reset" class="btn small ghost">恢复默认</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>界面风格</label>
+          <div class="radio-row" id="skin-row">
+            <label class="radio-pill"><input type="radio" name="set-skin" value="solid"><span>实色</span></label>
+            <label class="radio-pill"><input type="radio" name="set-skin" value="glass"><span>点缀玻璃</span></label>
+            <label class="radio-pill"><input type="radio" name="set-skin" value="glassplus"><span>重度玻璃 · 实验</span></label>
+          </div>
+          <p class="muted small">点缀玻璃：背景柔和色晕 + 卡片实色，最稳；重度玻璃：卡片半透明毛玻璃，与背景图是组合拳。</p>
+        </div>
+        <div class="form-row">
+          <label>背景图</label>
+          <div class="bg-editor">
+            <div id="bg-preview" class="bg-preview">未设置</div>
+            <div class="logo-actions">
+              <label class="btn small">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                上传背景图
+                <input type="file" id="set-bg-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+              </label>
+              <button type="button" id="btn-bg-clear" class="btn small ghost">关闭背景图</button>
+            </div>
+            <div class="mask-row" id="mask-row">
+              <label class="muted small">遮罩浓度</label>
+              <input type="range" id="bg-mask" min="0" max="85" step="5">
+              <span class="muted small" id="bg-mask-value">35%</span>
+            </div>
+            <p class="muted small">建议搭配「重度玻璃」风格：背景透过毛玻璃卡片更有层次。上传大图会自动压缩。</p>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>应用名称</label>
+          <div class="color-input-row">
+            <input type="text" id="set-app-name" maxlength="12" placeholder="SubDeck">
+            <button type="button" id="btn-name-reset" class="btn small ghost">恢复默认</button>
+          </div>
+          <p class="muted small">顶栏与标签页即时生效（≤12 字）。手机主屏图标名称需重新添加快捷方式后更新。</p>
+        </div>
+        <div class="form-row">
+          <label>品牌图标</label>
+          <div class="bg-editor">
+            <div class="brand-icon-preview brand-mark" id="icon-preview">S</div>
+            <div class="logo-actions">
+              <label class="btn small">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                上传图标
+                <input type="file" id="set-icon-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+              </label>
+              <button type="button" id="btn-icon-clear" class="btn small ghost">恢复默认 S</button>
+            </div>
+            <p class="muted small">顶栏 / 登录页 / 浏览器标签 / 主屏图标同步更换。建议方形图，≤2MB。</p>
+          </div>
+        </div>
+      </div>
       <div class="panel">
         <h2>基本设置</h2>
         <div class="form-row">

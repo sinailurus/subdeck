@@ -12,13 +12,14 @@ from fastapi.staticfiles import StaticFiles
 
 from . import auth, billing, rates
 from .currencies import CURRENCIES, CYCLES, PAYMENT_METHODS
-from .db import LOGO_DIR, db, get_setting, init_db, set_setting
+from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.2.0"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
+BRAND_RE = re.compile(r"^(bg|icon)_\d+\.(png|jpg|webp)$")
 LOGO_MAGIC = {
     "png": b"\x89PNG\r\n\x1a\n",
     "jpg": b"\xff\xd8\xff",
@@ -100,7 +101,20 @@ def _settings_payload(conn: sqlite3.Connection) -> dict:
     return {
         "base_currency": get_setting(conn, "base_currency", "CNY"),
         "remind_days": int(get_setting(conn, "remind_days", "7") or 7),
+        # ---- v1.2.0 外观与品牌 ----
+        "app_name": get_setting(conn, "app_name", "SubDeck") or "SubDeck",
+        "theme_color": get_setting(conn, "theme_color", ""),
+        "skin": get_setting(conn, "skin", "glass") or "glass",
+        "bg_image": get_setting(conn, "bg_image", ""),
+        "bg_mask": int(get_setting(conn, "bg_mask", "35") or 35),
+        "chart_style": get_setting(conn, "chart_style", "bars") or "bars",
+        "brand_icon": get_setting(conn, "brand_icon", ""),
     }
+
+
+ALLOWED_SKINS = {"solid", "glass", "glassplus"}
+ALLOWED_CHARTS = {"bars", "donut", "pie"}
+COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 @app.get("/api/currencies")
@@ -129,6 +143,30 @@ def put_settings(request: Request, body: dict):
             if not 0 <= days <= 90:
                 raise HTTPException(status_code=400, detail="提醒天数需在 0-90 之间")
             set_setting(conn, "remind_days", str(days))
+        # ---- v1.2.0 外观与品牌 ----
+        if "app_name" in body:
+            name = str(body["app_name"] or "").strip()
+            if not name or len(name) > 12:
+                raise HTTPException(status_code=400, detail="应用名称需为 1-12 个字")
+            set_setting(conn, "app_name", name)
+        if "theme_color" in body:
+            color = str(body["theme_color"] or "").strip()
+            if color and not COLOR_RE.match(color):
+                raise HTTPException(status_code=400, detail="主题色格式应为 #RRGGBB")
+            set_setting(conn, "theme_color", color)
+        if "skin" in body:
+            if body["skin"] not in ALLOWED_SKINS:
+                raise HTTPException(status_code=400, detail="不支持的界面风格")
+            set_setting(conn, "skin", body["skin"])
+        if "bg_mask" in body:
+            mask = int(body["bg_mask"])
+            if not 0 <= mask <= 85:
+                raise HTTPException(status_code=400, detail="遮罩浓度需在 0-85 之间")
+            set_setting(conn, "bg_mask", str(mask))
+        if "chart_style" in body:
+            if body["chart_style"] not in ALLOWED_CHARTS:
+                raise HTTPException(status_code=400, detail="不支持的图表类型")
+            set_setting(conn, "chart_style", body["chart_style"])
         return _settings_payload(conn)
 
 
@@ -350,6 +388,103 @@ def get_logo(request: Request, filename: str):
                         headers={"Cache-Control": "private, max-age=86400"})
 
 
+# ---------------------------------------------------------------- 品牌资产（外观背景图 / 应用图标）
+
+BRAND_MAX_BYTES = 4 * 1024 * 1024  # 4MB
+
+
+def _save_brand_file(file: UploadFile, prefix: str, max_bytes: int) -> str:
+    """通用品牌文件保存：魔数嗅探 + 大小限制，返回文件名。"""
+    data = file.file.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise HTTPException(status_code=400, detail="图片不能超过 4MB")
+    ext = _sniff_image(data[:16])
+    if not ext:
+        raise HTTPException(status_code=400, detail="仅支持 PNG / JPG / WebP 图片")
+    ts = int(datetime.datetime.now().timestamp())
+    filename = f"{prefix}_{ts}.{ext}"
+    with open(os.path.join(BG_DIR, filename), "wb") as f:
+        f.write(data)
+    return filename
+
+
+def _read_brand_setting(conn: sqlite3.Connection, key: str,
+                        new_filename: str | None = None) -> None:
+    """更新品牌文件设置并清理旧文件。"""
+    old = get_setting(conn, key, "")
+    set_setting(conn, key, new_filename or "")
+    if old:
+        old_path = os.path.join(BG_DIR, old)
+        if os.path.isfile(old_path):
+            os.remove(old_path)
+
+
+@app.post("/api/brand/background")
+def upload_background(request: Request, file: UploadFile = File(...)):
+    require_auth(request)
+    filename = _save_brand_file(file, "bg", BRAND_MAX_BYTES)
+    with db() as conn:
+        _read_brand_setting(conn, "bg_image", filename)
+        return {"ok": True, "bg_image": filename}
+
+
+@app.delete("/api/brand/background")
+def clear_background(request: Request):
+    require_auth(request)
+    with db() as conn:
+        _read_brand_setting(conn, "bg_image", None)
+    return {"ok": True}
+
+
+@app.get("/api/brand/background")
+def get_background(request: Request):
+    require_auth(request)
+    with db() as conn:
+        filename = get_setting(conn, "bg_image", "")
+    if not filename:
+        raise HTTPException(status_code=404, detail="未设置背景图")
+    return _brand_file_response(filename)
+
+
+@app.post("/api/brand/icon")
+def upload_icon(request: Request, file: UploadFile = File(...)):
+    require_auth(request)
+    filename = _save_brand_file(file, "icon", 2 * 1024 * 1024)
+    with db() as conn:
+        _read_brand_setting(conn, "brand_icon", filename)
+        return {"ok": True, "brand_icon": filename}
+
+
+@app.delete("/api/brand/icon")
+def clear_icon(request: Request):
+    require_auth(request)
+    with db() as conn:
+        _read_brand_setting(conn, "brand_icon", None)
+    return {"ok": True}
+
+
+@app.get("/api/brand/icon")
+def get_icon(request: Request):
+    """品牌图标（favicon / 主屏图标共用；未设置时 404，前端回落静态默认图标）。"""
+    require_auth(request)
+    with db() as conn:
+        filename = get_setting(conn, "brand_icon", "")
+    if not filename:
+        raise HTTPException(status_code=404, detail="未设置自定义图标")
+    return _brand_file_response(filename)
+
+
+def _brand_file_response(filename: str) -> FileResponse:
+    if not BRAND_RE.match(filename):
+        raise HTTPException(status_code=400, detail="非法文件名")
+    path = os.path.join(BG_DIR, filename)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    media = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}[filename.rsplit(".", 1)[1]]
+    return FileResponse(path, media_type=media,
+                        headers={"Cache-Control": "private, max-age=3600"})
+
+
 # ---------------------------------------------------------------- 统计
 
 @app.get("/api/stats")
@@ -420,6 +555,29 @@ def calendar_ics(request: Request, token: str = ""):
 
 
 # ---------------------------------------------------------------- 静态资源
+
+@app.get("/manifest.webmanifest")
+def web_manifest():
+    """动态 PWA 清单：应用名称 / 自定义图标 / 主题色即时生效（主屏图标名需重新添加快捷方式）。"""
+    with db() as conn:
+        name = get_setting(conn, "app_name", "SubDeck") or "SubDeck"
+        icon = get_setting(conn, "brand_icon", "")
+        theme = get_setting(conn, "theme_color", "") or "#4f6ef7"
+    if icon:
+        icons = [{"src": "/api/brand/icon", "sizes": "any", "type": "image/png"}]
+    else:
+        icons = [
+            {"src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+        ]
+    return JSONResponse({
+        "name": name, "short_name": name,
+        "description": "自部署订阅管理",
+        "start_url": "/", "display": "standalone",
+        "background_color": "#f4f6fb", "theme_color": theme,
+        "icons": icons,
+    })
+
 
 app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 

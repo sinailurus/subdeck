@@ -25,6 +25,7 @@ def check(name, fn):
         fn(); PASS.append(name); print(f"  OK {name}")
     except Exception as e:
         FAIL.append(name); print(f"  FAIL {name}: {type(e).__name__}: {e}")
+        import traceback; traceback.print_exc()
 
 def tiny_png():
     def chunk(typ, data):
@@ -135,9 +136,75 @@ check("iCal带token订阅", ics)
 def statics():
     body, _ = call("GET", "/")
     assert b"SubDeck" in body
-    for p in ("/assets/app.js", "/assets/manifest.webmanifest", "/assets/icons/icon-192.png"):
+    for p in ("/assets/app.js", "/manifest.webmanifest", "/assets/icons/icon-192.png"):
         call("GET", p)
 check("静态资源可访问", statics)
+
+# ---- v1.2.0 外观与品牌 ----
+def settings_ext():
+    b, _ = call("GET", "/api/settings", cookie=C)
+    for k in ("app_name", "theme_color", "skin", "bg_image", "bg_mask", "chart_style", "brand_icon"):
+        assert k in b, k
+    assert b["skin"] in ("solid", "glass", "glassplus"), b
+check("settings含外观键", settings_ext)
+
+def put_appearance():
+    b, _ = call("PUT", "/api/settings", {"skin": "glassplus", "theme_color": "#22c55e",
+        "chart_style": "donut", "bg_mask": 50, "app_name": "我的订阅"}, cookie=C)
+    assert b["skin"] == "glassplus" and b["theme_color"] == "#22c55e", b
+    assert b["chart_style"] == "donut" and b["app_name"] == "我的订阅" and b["bg_mask"] == 50, b
+    # 非法值全部 400
+    call("PUT", "/api/settings", {"skin": "neon"}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"theme_color": "red"}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"chart_style": "3d"}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"app_name": "012345678901234"}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"bg_mask": 99}, cookie=C, expect=400)
+    b, _ = call("PUT", "/api/settings", {"skin": "glass", "chart_style": "bars",
+        "theme_color": "", "bg_mask": 35, "app_name": "SubDeck"}, cookie=C)
+    assert b["skin"] == "glass", b
+check("外观设置读写+校验", put_appearance)
+
+def brand_upload():
+    png = tiny_png(); bd = "----bd"
+    part = (f"--{bd}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"bg.png\"\r\n"
+            f"Content-Type: image/png\r\n\r\n").encode() + png + b"\r\n" + f"--{bd}--\r\n".encode()
+    b, _ = call("POST", "/api/brand/background", raw=part,
+                headers={"Content-Type": f"multipart/form-data; boundary={bd}"}, cookie=C)
+    assert b["bg_image"].startswith("bg_"), b
+    body, _ = call("GET", "/api/brand/background", cookie=C)
+    assert body[:4] == b"\x89PNG"
+    b, _ = call("POST", "/api/brand/icon", raw=part,
+                headers={"Content-Type": f"multipart/form-data; boundary={bd}"}, cookie=C)
+    assert b["brand_icon"].startswith("icon_"), b
+    body, _ = call("GET", "/api/brand/icon", cookie=C)
+    assert body[:4] == b"\x89PNG"
+    # 非图片拒绝（防 XSS：与 logo 同策略）
+    bd2 = "----bd2"
+    evil = (f"--{bd2}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"x.svg\"\r\n"
+            f"Content-Type: image/svg+xml\r\n\r\n").encode() + b"nope" + f"\r\n--{bd2}--\r\n".encode()
+    call("POST", "/api/brand/background", raw=evil,
+         headers={"Content-Type": f"multipart/form-data; boundary={bd2}"}, cookie=C, expect=400)
+    call("POST", "/api/brand/icon", raw=evil,
+         headers={"Content-Type": f"multipart/form-data; boundary={bd2}"}, cookie=C, expect=400)
+    # 未登录 401
+    call("GET", "/api/brand/background", expect=401)
+    # 清理与回落
+    call("DELETE", "/api/brand/background", cookie=C)
+    call("DELETE", "/api/brand/icon", cookie=C)
+    call("GET", "/api/brand/background", cookie=C, expect=404)
+    b, _ = call("GET", "/api/settings", cookie=C)
+    assert not b["bg_image"] and not b["brand_icon"], b
+check("品牌背景图/图标上传清理", brand_upload)
+
+def manifest_dyn():
+    # 注意：call() 第二个返回值是 Set-Cookie 头，不是 Content-Type；JSON 校验用 isinstance
+    body, _ = call("GET", "/manifest.webmanifest")
+    assert isinstance(body, dict) and body["name"] == "SubDeck" and body["icons"], body
+    call("PUT", "/api/settings", {"app_name": "订阅管家"}, cookie=C)
+    body, _ = call("GET", "/manifest.webmanifest")
+    assert body["name"] == "订阅管家", body
+    call("PUT", "/api/settings", {"app_name": "SubDeck"}, cookie=C)
+check("动态manifest随名称/图标联动", manifest_dyn)
 
 def delete():
     b, _ = call("DELETE", f"/api/subscriptions/{ids['i']}", cookie=C)
