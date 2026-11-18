@@ -368,6 +368,20 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
   background: linear-gradient(135deg, #4f6ef7 50%, #6d87ff 50%);
 }
 .bg-editor { display: flex; flex-direction: column; gap: 10px; }
+/* 预设背景缩略图行：点选即用（v1.2.1） */
+.preset-row { display: flex; gap: 10px; }
+.preset-swatch {
+  width: 52px; height: 40px; border-radius: 10px; cursor: pointer;
+  border: 2px solid var(--line); padding: 0;
+  background-size: cover; background-position: center;
+}
+.preset-swatch.active { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent); }
+.preset-none { position: relative; background: var(--primary-weak); }
+.preset-none::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 60%; height: 2px; transform: translate(-50%, -50%) rotate(-45deg);
+  background: var(--muted); border-radius: 2px;
+}
 .bg-preview {
   width: 100%; height: 110px; border-radius: 12px;
   border: 1px solid var(--line);

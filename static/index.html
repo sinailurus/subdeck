@@ -139,11 +139,17 @@
         <div class="form-row">
           <label>背景图</label>
           <div class="bg-editor">
-            <div id="bg-preview" class="bg-preview">未设置</div>
+            <div class="preset-row" id="bg-presets">
+              <button type="button" class="preset-swatch" data-preset="preset:aurora" style="background-image:url('/assets/bg/aurora.jpg')" title="极光"></button>
+              <button type="button" class="preset-swatch" data-preset="preset:candy" style="background-image:url('/assets/bg/candy.jpg')" title="糖果"></button>
+              <button type="button" class="preset-swatch" data-preset="preset:sunset" style="background-image:url('/assets/bg/sunset.jpg')" title="日落"></button>
+              <button type="button" class="preset-swatch preset-none" data-preset="" title="无背景"></button>
+            </div>
+            <div class="bg-preview" id="bg-preview">未设置</div>
             <div class="logo-actions">
               <label class="btn small">
                 <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                上传背景图
+                上传自定义背景
                 <input type="file" id="set-bg-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
               </label>
               <button type="button" id="btn-bg-clear" class="btn small ghost">关闭背景图</button>
@@ -153,7 +159,7 @@
               <input type="range" id="bg-mask" min="0" max="85" step="5">
               <span class="muted small" id="bg-mask-value">35%</span>
             </div>
-            <p class="muted small">建议搭配「重度玻璃」风格：背景透过毛玻璃卡片更有层次。上传大图会自动压缩。</p>
+            <p class="muted small">预设点击即用；上传会自动压缩（长边 ≤1920）。搭配「重度玻璃」风格：背景透过毛玻璃卡片更有层次。</p>
           </div>
         </div>
         <div class="form-row">

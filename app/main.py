@@ -15,7 +15,7 @@ from .currencies import CURRENCIES, CYCLES, PAYMENT_METHODS
 from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
@@ -115,6 +115,15 @@ def _settings_payload(conn: sqlite3.Connection) -> dict:
 ALLOWED_SKINS = {"solid", "glass", "glassplus"}
 ALLOWED_CHARTS = {"bars", "donut", "pie"}
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+# 内置预设背景：与 static/bg/*.jpg 一一对应（新增预设 = 加图 + 白名单加一行）
+ALLOWED_BG_PRESETS = {"aurora", "candy", "sunset"}
+
+
+def _valid_bg_image(value: str) -> bool:
+    """bg_image 合法值：空 / 上传文件名（仅上传接口写入）/ preset:xxx 预设。"""
+    if not value:
+        return True
+    return value.startswith("preset:") and value.split(":", 1)[1] in ALLOWED_BG_PRESETS
 
 
 @app.get("/api/currencies")
@@ -163,6 +172,11 @@ def put_settings(request: Request, body: dict):
             if not 0 <= mask <= 85:
                 raise HTTPException(status_code=400, detail="遮罩浓度需在 0-85 之间")
             set_setting(conn, "bg_mask", str(mask))
+        if "bg_image" in body:
+            v = str(body["bg_image"] or "")
+            if not _valid_bg_image(v):
+                raise HTTPException(status_code=400, detail="未知预设背景")
+            set_setting(conn, "bg_image", v)
         if "chart_style" in body:
             if body["chart_style"] not in ALLOWED_CHARTS:
                 raise HTTPException(status_code=400, detail="不支持的图表类型")

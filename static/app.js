@@ -24,7 +24,7 @@ const STR = {
     bgUploaded: "背景图已更新", bgCleared: "已关闭背景图", bgTooBig: "图片不能超过 4MB",
     iconUploaded: "图标已更新", iconCleared: "已恢复默认图标",
     uploadFail: "上传失败：", noUpcoming: "未来 30 天没有扣费计划 🎉",
-    catMonthly: "月合计",
+    catMonthly: "月合计", bgPresetSaved: "预设背景已应用",
   },
 };
 const LANG = "zh";
@@ -206,7 +206,11 @@ function applyAppearance() {
   const bg = $("#bg-layer");
   if (s.bg_image) {
     bg.classList.add("has-bg-img");
-    bg.style.setProperty("--bg-img", `url("/api/brand/background")`);
+    // 预设背景走静态资源（preset:aurora → /assets/bg/aurora.jpg），上传走鉴权端点
+    const url = s.bg_image.startsWith("preset:")
+      ? `/assets/bg/${s.bg_image.slice(7)}.jpg`
+      : "/api/brand/background";
+    bg.style.setProperty("--bg-img", `url("${url}")`);
     bg.style.setProperty("--bg-mask-a", (s.bg_mask ?? 35) / 100);
   } else {
     bg.classList.remove("has-bg-img");
@@ -596,9 +600,14 @@ function renderAppearanceControls() {
     b.classList.toggle("active", b.dataset.chart === (s.chart_style || "bars")));
   $("#bg-mask").value = s.bg_mask;
   $("#bg-mask-value").textContent = `${s.bg_mask}%`;
+  document.querySelectorAll("#bg-presets .preset-swatch").forEach((b) =>
+    b.classList.toggle("active", b.dataset.preset === (s.bg_image || "")));
   const bgPrev = $("#bg-preview");
   if (s.bg_image) {
-    bgPrev.style.backgroundImage = `url("/api/brand/background")`;
+    const url = s.bg_image.startsWith("preset:")
+      ? `/assets/bg/${s.bg_image.slice(7)}.jpg`
+      : "/api/brand/background";
+    bgPrev.style.backgroundImage = `url("${url}")`;
     bgPrev.textContent = "";
   } else { bgPrev.style.backgroundImage = ""; bgPrev.textContent = "未设置背景图"; }
   renderThemeSwatches();
@@ -654,6 +663,19 @@ $("#bg-mask").addEventListener("input", (e) => {
   $("#bg-layer").style.setProperty("--bg-mask-a", e.target.value / 100);
 });
 $("#bg-mask").addEventListener("change", (e) => saveAppearance({ bg_mask: Number(e.target.value) }));
+$("#bg-presets").addEventListener("click", (e) => {
+  const b = e.target.closest(".preset-swatch");
+  if (!b) return;
+  if (b.dataset.preset) {          // 预设：点选即用（覆盖上传背景）
+    saveAppearance({ bg_image: b.dataset.preset }, t("bgPresetSaved"));
+  } else {                          // 无背景：走 DELETE 清理上传文件并置空
+    api("/api/brand/background", { method: "DELETE" }).then(() => {
+      state.settings.bg_image = "";
+      applyAppearance(); renderAppearanceControls();
+      toast(t("bgCleared"));
+    }).catch((err) => { if (err.message !== "unauthorized") toast("操作失败：" + err.message); });
+  }
+});
 $("#btn-bg-clear").addEventListener("click", async () => {
   try {
     await api("/api/brand/background", { method: "DELETE" });

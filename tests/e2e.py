@@ -196,6 +196,30 @@ def brand_upload():
     assert not b["bg_image"] and not b["brand_icon"], b
 check("品牌背景图/图标上传清理", brand_upload)
 
+def preset_bg():
+    b, _ = call("PUT", "/api/settings", {"bg_image": "preset:aurora"}, cookie=C)
+    assert b["bg_image"] == "preset:aurora", b
+    b, _ = call("PUT", "/api/settings", {"bg_image": "preset:candy"}, cookie=C)
+    assert b["bg_image"] == "preset:candy", b
+    # 未知预设 400
+    call("PUT", "/api/settings", {"bg_image": "preset:nope"}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"bg_image": "preset:"}, cookie=C, expect=400)
+    # 预设静态图随镜像可访问
+    call("GET", "/assets/bg/aurora.jpg")
+    call("GET", "/assets/bg/candy.jpg")
+    call("GET", "/assets/bg/sunset.jpg")
+    # 预设与上传互斥：再上传应覆盖 preset 值
+    png = tiny_png(); bd = "----bd3"
+    part = (f"--{bd}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"bg.png\"\r\n"
+            f"Content-Type: image/png\r\n\r\n").encode() + png + b"\r\n" + f"--{bd}--\r\n".encode()
+    b, _ = call("POST", "/api/brand/background", raw=part,
+                headers={"Content-Type": f"multipart/form-data; boundary={bd}"}, cookie=C)
+    assert b["bg_image"].startswith("bg_"), b
+    call("DELETE", "/api/brand/background", cookie=C)
+    b, _ = call("GET", "/api/settings", cookie=C)
+    assert not b["bg_image"], b
+check("预设背景切换+校验+互斥", preset_bg)
+
 def manifest_dyn():
     # 注意：call() 第二个返回值是 Set-Cookie 头，不是 Content-Type；JSON 校验用 isinstance
     body, _ = call("GET", "/manifest.webmanifest")
