@@ -12,5 +12,22 @@ if [ "$(id -u)" = "0" ]; then
   exec gosu appuser "$@"
 fi
 
-# 非 root 启动（如手动指定 user:）则直接运行
+# 非 root 启动：先自检数据目录可写性。不可写时输出明确指引后退出，
+# 避免应用层抛出晦涩的 PermissionError 并陷入重启循环。
+if ! touch "/data/.write-test" 2>/dev/null; then
+  echo "==========================================================" >&2
+  echo "SubDeck 无法写入数据目录 /data，启动终止。" >&2
+  echo "" >&2
+  echo "常见原因：容器以非 root 用户启动，而 /data 挂载目录属主不匹配。" >&2
+  echo "（例如曾以 root 运行产生的数据文件，后来改用普通用户启动）" >&2
+  echo "" >&2
+  echo "解决方法：在 docker-compose.yml 的 subdeck 服务下添加一行：" >&2
+  echo '    user: "0:0"' >&2
+  echo "然后重建容器。程序会用 root 自动修复目录属主并降权运行，数据无损。" >&2
+  echo "==========================================================" >&2
+  exit 1
+fi
+rm -f "/data/.write-test"
+
+# 非 root 且 /data 可写（属主恰好匹配）则直接运行
 exec "$@"

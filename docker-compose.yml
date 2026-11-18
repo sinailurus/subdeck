@@ -1,18 +1,17 @@
 # SubDeck —— Docker Compose 部署文件
 #
-# 用法一（推荐）：已有预构建镜像
-#   1. cp .env.example .env 并修改 AUTH_PASSWORD
-#   2. 把下方 image 改成你的 GHCR/Docker Hub 镜像地址
-#   3. docker compose up -d
+# 用法：cp .env.example .env 并修改 AUTH_PASSWORD，然后 docker compose up -d
+# 镜像地址已指向作者 GHCR（CI 自动构建），无需修改。
 #
-# 用法二：本地构建（无预构建镜像时）
-#   注释掉 image 行，取消 build 行注释后 docker compose up -d
+# user: "0:0" 为推荐配置，请勿删除：容器以 root 启动后，
+# 入口脚本自动修复 /data 属主并降权为普通用户运行服务进程（root 仅存在于启动瞬间）。
 #
 # 配置项在 .env 文件中修改（参考 .env.example）
 
 services:
   subdeck:
-    image: ghcr.io/sinailurus/subdeck:latest             # ← CI 自动构建的 GHCR 镜像
+    image: ghcr.io/sinailurus/subdeck:latest             # CI 自动构建的 GHCR 镜像
+    user: "0:0"                                          # 修权限必需，勿删（服务进程自动降权，非 root 裸奔）
     # build: .                                          # ← 本地构建时启用
     container_name: subdeck
     restart: unless-stopped
