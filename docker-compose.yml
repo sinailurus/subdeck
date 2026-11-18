@@ -1,0 +1,26 @@
+# SubDeck —— Docker Compose 部署文件
+#
+# 用法一（推荐）：已有预构建镜像
+#   1. cp .env.example .env 并修改 AUTH_PASSWORD
+#   2. 把下方 image 改成你的 GHCR/Docker Hub 镜像地址
+#   3. docker compose up -d
+#
+# 用法二：本地构建（无预构建镜像时）
+#   注释掉 image 行，取消 build 行注释后 docker compose up -d
+#
+# 配置项在 .env 文件中修改（参考 .env.example）
+
+services:
+  subdeck:
+    image: ghcr.io/YOUR_GITHUB_USERNAME/subdeck:latest   # ← 发布后改成你的用户名
+    # build: .                                          # ← 本地构建时启用
+    container_name: subdeck
+    restart: unless-stopped
+    ports:
+      - "${SUBDECK_PORT:-8300}:8000"
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-}
+      - DATA_DIR=/data
+    volumes:
+      - ${SUBDECK_DATA:-./data}:/data

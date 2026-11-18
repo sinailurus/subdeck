@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4f6ef7">
+<meta name="description" content="SubDeck - 自部署订阅管理">
+<link rel="manifest" href="/assets/manifest.webmanifest">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+<title>SubDeck · 订阅管理</title>
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+
+<!-- 登录页 -->
+<div id="login-view" class="login-view hidden">
+  <form id="login-form" class="login-card">
+    <div class="login-logo">S</div>
+    <h1>SubDeck</h1>
+    <p class="muted">请输入访问密码</p>
+    <input type="password" id="login-password" placeholder="密码" autocomplete="current-password" required>
+    <button type="submit" class="btn primary">进入</button>
+    <p id="login-error" class="login-error hidden">密码错误，请重试</p>
+  </form>
+</div>
+
+<!-- 主应用 -->
+<div id="app-view" class="app hidden">
+  <header class="topbar">
+    <div class="topbar-brand"><span class="brand-mark">S</span> SubDeck</div>
+    <nav class="topnav" aria-label="主导航">
+      <button data-nav="dashboard" class="nav-btn">概览</button>
+      <button data-nav="subs" class="nav-btn">订阅</button>
+      <button data-nav="settings" class="nav-btn">设置</button>
+    </nav>
+    <div class="topbar-actions">
+      <span id="rates-updated" class="muted small"></span>
+      <button id="refresh-rates" class="icon-btn" title="刷新汇率" aria-label="刷新汇率">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="theme-toggle" class="icon-btn" title="切换深浅色" aria-label="切换深浅色">
+        <svg class="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- 概览 -->
+    <section id="view-dashboard" class="view">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">月均支出</div><div class="stat-value" id="stat-monthly">--</div></div>
+        <div class="stat-card"><div class="stat-label">年度支出</div><div class="stat-value" id="stat-yearly">--</div></div>
+        <div class="stat-card"><div class="stat-label">活跃订阅</div><div class="stat-value" id="stat-count">--</div></div>
+        <div class="stat-card" id="stat-pending-card"><div class="stat-label">即将扣费</div><div class="stat-value" id="stat-pending">--</div></div>
+      </div>
+      <div class="panel">
+        <h2>待付款区</h2>
+        <div id="pending-list" class="pending-list"></div>
+      </div>
+      <div class="panel">
+        <h2>分类月度占比</h2>
+        <div id="category-bars" class="category-bars"></div>
+      </div>
+    </section>
+
+    <!-- 订阅列表 -->
+    <section id="view-subs" class="view hidden">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="search" id="search-input" placeholder="搜索名称或分类">
+        </div>
+        <div class="chips" id="filter-chips">
+          <button class="chip active" data-filter="all">全部</button>
+          <button class="chip" data-filter="auto">自动扣费</button>
+          <button class="chip" data-filter="manual">手动付款</button>
+        </div>
+        <button id="btn-add" class="btn primary">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          添加订阅
+        </button>
+      </div>
+      <div id="subs-table-wrap" class="panel table-wrap">
+        <table class="subs-table" id="subs-table">
+          <thead><tr>
+            <th>服务</th><th class="ta-r">金额</th><th>周期</th>
+            <th>下次扣费</th><th>方式</th><th>分类</th><th class="ta-r">操作</th>
+          </tr></thead>
+          <tbody id="subs-tbody"></tbody>
+        </table>
+      </div>
+      <div id="subs-cards" class="subs-cards"></div>
+    </section>
+
+    <!-- 设置 -->
+    <section id="view-settings" class="view hidden">
+      <div class="panel">
+        <h2>基本设置</h2>
+        <div class="form-row">
+          <label>基准币种（统计折算用）</label>
+          <select id="set-base-currency"></select>
+        </div>
+        <div class="form-row">
+          <label>提前提醒天数（待付款区）</label>
+          <input type="number" id="set-remind-days" min="0" max="90">
+        </div>
+        <button id="btn-save-settings" class="btn primary">保存设置</button>
+      </div>
+      <div class="panel">
+        <h2>汇率数据</h2>
+        <p class="muted small">数据来源：欧洲央行参考汇率（主源 frankfurter.dev，失败自动切换备用源，均免费）。<span id="rates-status"></span></p>
+        <button id="btn-refresh-rates" class="btn">立即刷新汇率</button>
+      </div>
+      <div class="panel">
+        <h2>日历订阅</h2>
+        <p class="muted small">把下面的链接添加到手机/电脑的日历 App（如系统日历 → 添加订阅日历），扣费日会自动出现在日历里。</p>
+        <div class="ics-row"><input id="ics-url" readonly><button id="btn-copy-ics" class="btn">复制</button></div>
+      </div>
+      <div class="panel">
+        <h2>账号</h2>
+        <button id="btn-logout" class="btn danger hidden">退出登录</button>
+        <p id="auth-note" class="muted small"></p>
+      </div>
+      <div class="panel about">
+        <h2>关于</h2>
+        <p class="muted small">SubDeck <span id="about-version"></span> · MIT License<br>
+        本项目由 Vibe Coding 方式辅助开发，版权与最终决定权归仓库所有者。</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 底部导航（手机） -->
+  <nav class="bottom-nav">
+    <button data-nav="dashboard" class="nav-btn active">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>概览</span>
+    </button>
+    <button data-nav="subs" class="nav-btn">
+      <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>订阅</span>
+    </button>
+    <button data-nav="settings" class="nav-btn">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3m0 14v3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M2 12h3m14 0h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>设置</span>
+    </button>
+  </nav>
+</div>
+
+<!-- 添加/编辑弹窗 -->
+<div id="modal-mask" class="modal-mask hidden">
+  <form id="sub-form" class="modal" novalidate>
+    <h2 id="modal-title">添加订阅</h2>
+    <input type="hidden" id="f-id">
+    <div class="form-grid">
+      <div class="form-row span-2">
+        <label>名称 *</label>
+        <input id="f-name" maxlength="100" placeholder="如 Netflix、iCloud+、机房托管" required>
+      </div>
+      <div class="form-row">
+        <label>金额 *</label>
+        <input id="f-amount" type="number" min="0" step="0.01" inputmode="decimal" required>
+      </div>
+      <div class="form-row">
+        <label>币种</label>
+        <select id="f-currency"></select>
+      </div>
+      <div class="form-row">
+        <label>周期</label>
+        <select id="f-cycle">
+          <option value="weekly">每周</option>
+          <option value="monthly" selected>每月</option>
+          <option value="quarterly">每季度</option>
+          <option value="semiannual">每半年</option>
+          <option value="yearly">每年</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>下次扣费日 *</label>
+        <input id="f-date" type="date" required>
+      </div>
+      <div class="form-row span-2">
+        <label>付款方式</label>
+        <div class="radio-row">
+          <label class="radio-pill"><input type="radio" name="f-pay" value="auto" checked><span>自动扣费</span></label>
+          <label class="radio-pill"><input type="radio" name="f-pay" value="manual"><span>手动付款</span></label>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>分类</label>
+        <input id="f-category" list="category-list" maxlength="30" placeholder="选择或输入">
+        <datalist id="category-list">
+          <option value="video">视频</option><option value="music">音乐</option>
+          <option value="cloud">云服务</option><option value="software">软件</option>
+          <option value="network">网络</option><option value="game">游戏</option>
+          <option value="news">资讯</option><option value="shopping">购物</option>
+          <option value="other">其他</option>
+        </datalist>
+      </div>
+      <div class="form-row">
+        <label>链接（可选）</label>
+        <input id="f-url" type="url" maxlength="300" placeholder="https://">
+      </div>
+      <div class="form-row span-2">
+        <label>图标</label>
+        <div class="logo-editor">
+          <div id="logo-preview" class="logo-avatar">S</div>
+          <div class="logo-actions">
+            <label class="btn small">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              上传图片
+              <input type="file" id="f-logo" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+            </label>
+            <button type="button" id="btn-clear-logo" class="btn small ghost">恢复字母头像</button>
+            <p class="muted small">支持 PNG / JPG / WebP，≤2MB</p>
+          </div>
+        </div>
+        <div class="swatches" id="color-swatches"></div>
+      </div>
+      <div class="form-row span-2">
+        <label>备注</label>
+        <textarea id="f-notes" rows="2" maxlength="500"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" id="btn-delete" class="btn danger hidden">删除</button>
+      <div class="foot-right">
+        <button type="button" id="btn-cancel" class="btn ghost">取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# 数据与隐私不入库
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# 本地环境
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 系统杂项
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+# 构建上下文瘦身
+data/
+.git/
+.github/
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.md
+LICENSE
+.gitignore
