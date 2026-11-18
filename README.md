@@ -157,9 +157,13 @@ python3 tests/e2e.py
 
 ## 许可证
 
-[MIT](LICENSE) © 2026 YOUR_NAME
+自 v1.1.0 起采用 [PolyForm Noncommercial 1.0.0](LICENSE) 授权：
 
-使用前请把 `LICENSE` 中的 `YOUR_NAME` 改成你的名字或 GitHub 用户名。
+- 个人学习、自部署、**非商用的二次开发与修改**：自由使用；分发时必须保留版权与许可声明（协议内置 `Required Notice` 署名链，自动指向本仓库）
+- 任何商用（集成进商业产品、转售、付费托管服务等）：需**事先获得作者书面授权**
+- v1.0.0 及更早版本仍按 MIT 授权（协议变更不可追溯历史版本）
+
+© 2026 COPYRIGHT_HOLDER · 源码仓库见 `Required Notice`
 
 ## 免责声明
 
