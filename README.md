@@ -27,11 +27,15 @@
 
 ## 快速开始
 
-### 方式一：使用预构建镜像（推荐）
+### 方式一：Windows 一键部署包（没有 NAS / 不会 Docker）
+
+到 [Releases](https://github.com/sinailurus/subdeck/releases) 页面下载最新版 `SubDeck-*-windows-x64.zip` → 解压 → 双击 `SubDeck.exe` → 浏览器自动打开即可使用。数据目录、访问密码、端口在压缩包内的 `subdeck.ini` 里改（有中文注释），详见包内「使用说明.txt」。需要 Windows 10 / 11（64 位）。
+
+### 方式二：使用预构建镜像（NAS / Docker 用户，推荐）
 
 先发布镜像（见下方「发布你自己的镜像」），然后把 `docker-compose.yml` 里的 `image:` 改成你的镜像地址即可。
 
-### 方式二：本地构建
+### 方式三：本地构建
 
 ```bash
 git clone https://github.com/sinailurus/subdeck.git

@@ -8,6 +8,7 @@ import re
 import secrets
 import shutil
 import sqlite3
+import sys
 import threading
 import time
 
@@ -21,8 +22,12 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.5.1"
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+APP_VERSION = "1.6.0"
+if getattr(sys, "frozen", False):
+    # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
+    STATIC_DIR = os.path.join(sys._MEIPASS, "static")
+else:
+    STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
 BRAND_RE = re.compile(r"^(bg|icon|loginicon|loginbg)_\d+\.(png|jpg|webp)$")

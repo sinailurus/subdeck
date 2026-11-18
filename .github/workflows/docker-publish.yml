@@ -54,3 +54,49 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # v1.6.0 起：tag 推送时打包 Windows 一键部署包并挂到 GitHub Release
+  build-windows:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    permissions:
+      contents: write   # 创建 Release 并上传附件
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: PyInstaller 打包
+        run: pyinstaller subdeck.spec --noconfirm
+
+      - name: 组装发行包（exe + ini 模板 + 使用说明）
+        id: zip
+        shell: python
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          import os, zipfile
+          tag = os.environ["TAG_NAME"].lstrip("v")
+          out = f"SubDeck-{tag}-windows-x64.zip"
+          with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+              z.write("dist/SubDeck.exe", "SubDeck.exe")
+              z.write("packaging/subdeck.ini", "subdeck.ini")
+              z.write("packaging/使用说明.txt", "使用说明.txt")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"zip={out}\n")
+          print("built", out)
+
+      - name: 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.zip }}
+          body: |
+            **Windows 一键部署包**：下载 SubDeck-*-windows-x64.zip → 解压 → 双击 SubDeck.exe。
+            使用方法见压缩包内「使用说明.txt」。Docker / NAS 用户请继续拉取镜像。
