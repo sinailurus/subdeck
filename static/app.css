@@ -68,7 +68,7 @@ body {
 .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
 
 /* ---------- 主体 ---------- */
-.content { max-width: 1060px; margin: 0 auto; padding: 16px 16px 90px; }
+.content { width: 100%; max-width: 1060px; margin: 0 auto; padding: 16px 16px 90px; }
 .view { animation: fadein .18s ease; }
 @keyframes fadein { from { opacity: .4; transform: translateY(4px); } }
 
@@ -322,7 +322,7 @@ body {
 @media (min-width: 1092px) {
   .stat-grid { grid-template-columns: repeat(4, 1fr); }
   .subs-cards { display: none !important; }
-  .subs-table-wrap { display: block; }
+  .table-wrap { display: block; }
   .bottom-nav { display: none; }
   .topnav { display: flex; }
   .content { padding-bottom: 32px; }
