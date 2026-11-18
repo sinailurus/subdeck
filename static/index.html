@@ -21,6 +21,7 @@
   <form id="login-form" class="login-card">
     <div class="login-logo" id="login-logo">S</div>
     <h1 id="login-title">SubDeck</h1>
+    <p id="login-welcome" class="login-welcome muted hidden"></p>
     <p class="muted">请输入访问密码</p>
     <input type="password" id="login-password" placeholder="密码" autocomplete="current-password" required>
     <button type="submit" class="btn primary">进入</button>
@@ -210,6 +211,67 @@
             </div>
             <p class="muted small">顶栏 / 登录页 / 浏览器标签 / 主屏图标同步更换。建议方形图，≤2MB。</p>
           </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>登录页</h2>
+        <p class="muted small">登录页独立于主应用外观：标题、欢迎语与背景在此单独设置，保存后退出登录即可查看效果。<strong>背景图与欢迎语登录前公开可见，请勿使用含隐私内容的图片。</strong>浏览器标签标题仍跟随应用名。</p>
+        <div class="form-row">
+          <label>登录页标题（留空 = 跟随应用名）</label>
+          <input type="text" id="f-login-title" maxlength="24" placeholder="跟随应用名">
+        </div>
+        <div class="form-row">
+          <label>欢迎语（可选，留空隐藏）</label>
+          <input type="text" id="f-login-welcome" maxlength="40" placeholder="统一管理订阅，请登录继续">
+        </div>
+        <div class="form-row">
+          <label>背景（主题渐变 / 内置预设 / 自定义图片，预设与主应用共用）</label>
+          <div class="bg-picker" id="login-bg-picker">
+            <button type="button" class="bg-card bg-grad" data-bg="" title="主题渐变（默认）"><span class="bg-name">主题渐变</span></button>
+            <button type="button" class="bg-card bg-aurora" data-bg="preset:aurora" title="极光"><span class="bg-name">极光</span></button>
+            <button type="button" class="bg-card bg-candy" data-bg="preset:candy" title="糖果"><span class="bg-name">糖果</span></button>
+            <button type="button" class="bg-card bg-sunset" data-bg="preset:sunset" title="日落"><span class="bg-name">日落</span></button>
+            <label class="bg-card bg-upload" title="上传自定义图片">
+              <input type="file" id="login-bg-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+              <span class="bg-name">自定义</span>
+            </label>
+            <button type="button" class="bg-card bg-none" data-bg="none" title="无背景"><span class="bg-name">无背景</span></button>
+          </div>
+          <div class="upload-line hidden" id="login-bg-upload-line">
+            <span class="muted small" id="login-bg-upload-name">—</span>
+            <button type="button" id="btn-login-bg-clear" class="btn small ghost danger-text">删除图片</button>
+          </div>
+          <div class="mask-row" id="login-mask-row">
+            <label class="muted small">图片遮罩</label>
+            <input type="range" id="login-mask" min="0" max="80" step="5">
+            <span class="muted small" id="login-mask-value">45%</span>
+          </div>
+          <p class="muted small">遮罩压深背景图，保证卡片文字可读；仅自定义图片时有效。</p>
+        </div>
+        <div class="form-row">
+          <label>登录页图标</label>
+          <div class="bg-editor">
+            <div class="brand-icon-preview brand-mark" id="login-icon-preview">S</div>
+            <div class="logo-actions">
+              <label class="btn small">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                上传/替换
+                <input type="file" id="login-icon-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+              </label>
+              <button type="button" id="btn-login-icon-clear" class="btn small ghost">删除，恢复跟随</button>
+            </div>
+            <p class="muted small">优先级：登录页图标 → 品牌图标 → 标题首字母。方形图 ≤2MB。</p>
+          </div>
+        </div>
+        <button id="btn-save-login" class="btn primary">保存登录页设置</button>
+      </div>
+      <div class="panel">
+        <h2>分类管理</h2>
+        <p class="muted small">为订阅表单的分类候选添加自定义条目（每个 ≤12 字，最多 20 个）。内置分类不可删除；删除自定义分类不影响已有订阅，其分类照常显示。</p>
+        <div class="chips" id="cat-chips"></div>
+        <div class="form-row form-inline">
+          <input type="text" id="f-new-cat" maxlength="12" placeholder="输入新分类，回车或点击添加">
+          <button type="button" id="btn-add-cat" class="btn primary">添加</button>
         </div>
       </div>
       <div class="panel">

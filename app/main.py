@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """SubDeck —— 自部署订阅管理（FastAPI 后端入口）。"""
 import datetime
+import json
 import os
 import re
 import shutil
 import sqlite3
 import threading
+import time
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
@@ -17,11 +19,11 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.5.0"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
-BRAND_RE = re.compile(r"^(bg|icon)_\d+\.(png|jpg|webp)$")
+BRAND_RE = re.compile(r"^(bg|icon|loginicon|loginbg)_\d+\.(png|jpg|webp)$")
 LOGO_MAGIC = {
     "png": b"\x89PNG\r\n\x1a\n",
     "jpg": b"\xff\xd8\xff",
@@ -35,6 +37,29 @@ PALETTE = ["#ef5350", "#ab63f6", "#5c9dff", "#26a69a", "#66bb6a",
            "#ffa726", "#ff7043", "#ec407a", "#8d6e63", "#78909c"]
 
 app = FastAPI(title="SubDeck", version=APP_VERSION, docs_url=None, redoc_url=None)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """基础安全响应头：防 MIME 嗅探 / 点击劫持 / 引用泄露；CSP 收紧到同源。
+
+    说明：
+    - img-src 含 data:（PWA/占位图）；style-src 需 unsafe-inline（JS 动态样式与内联样式表）；
+    - 前端无内联 script，script-src 'self' 即可；API 全同源，connect-src 'self'；
+    - ICS 文本 / manifest / 静态资源同样受保护。
+    """
+    resp = await call_next(request)
+    h = resp.headers
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("X-Frame-Options", "DENY")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; "
+        "form-action 'self'",
+    )
+    return resp
 
 
 @app.on_event("startup")
@@ -79,12 +104,38 @@ def me(request: Request):
     }
 
 
+# ---------------------------------------------------------------- 登录限速（防暴力破解）
+# 进程内计数：连续失败 ≥5 次锁定 15 分钟；成功登录清零。重启即重置（单用户自部署够用）。
+_LOGIN_FAILS: dict[str, tuple[int, float]] = {}   # ip -> (连续失败次数, 锁定截止时间戳)
+LOGIN_MAX_FAILS = 5
+LOGIN_LOCK_SECONDS = 900
+
+
+def _client_ip(request: Request) -> str:
+    """真实客户端 IP：CF 隧道场景取 CF-Connecting-IP（由 CDN 覆盖写入，不可伪造）；
+    直连场景取 socket 对端地址。刻意不信任可任意伪造的 X-Forwarded-For。"""
+    return request.headers.get("cf-connecting-ip") or (
+        request.client.host if request.client else "unknown")
+
+
 @app.post("/api/login")
 def login(request: Request, body: dict):
     if not auth.auth_enabled():
         return {"ok": True, "msg": "未启用密码保护"}
+    ip = _client_ip(request)
+    now = time.time()
+    fails, lock_until = _LOGIN_FAILS.get(ip, (0, 0.0))
+    if now < lock_until:
+        remain = int((lock_until - now) // 60) + 1
+        raise HTTPException(status_code=429, detail=f"密码错误次数过多，请约 {remain} 分钟后再试")
     if not isinstance(body.get("password"), str) or not auth.check_password(body["password"]):
+        fails += 1
+        if fails >= LOGIN_MAX_FAILS:
+            _LOGIN_FAILS[ip] = (0, now + LOGIN_LOCK_SECONDS)
+            raise HTTPException(status_code=429, detail="密码错误次数过多，已锁定 15 分钟")
+        _LOGIN_FAILS[ip] = (fails, 0.0)
         raise HTTPException(status_code=401, detail="密码错误")
+    _LOGIN_FAILS.pop(ip, None)
     resp = JSONResponse({"ok": True})
     _session_cookie(resp)
     return resp
@@ -111,6 +162,13 @@ def _settings_payload(conn: sqlite3.Connection) -> dict:
         "bg_mask": int(get_setting(conn, "bg_mask", "35") or 35),
         "chart_style": get_setting(conn, "chart_style", "bars") or "bars",
         "brand_icon": get_setting(conn, "brand_icon", ""),
+        # ---- v1.5.0 登录页自定义 + 分类管理 ----
+        "login_title": get_setting(conn, "login_title", ""),
+        "login_welcome": get_setting(conn, "login_welcome", ""),
+        "login_bg": get_setting(conn, "login_bg", ""),
+        "login_bg_mask": int(get_setting(conn, "login_bg_mask", "45") or 45),
+        "login_icon": get_setting(conn, "login_icon", ""),
+        "custom_categories": _load_custom_categories(conn),
         # ---- v1.4.0 邮箱提醒 ----
         "notify_enabled": get_setting(conn, "notify_enabled", "0") == "1",
         "notify_emails": get_setting(conn, "notify_emails", ""),
@@ -126,6 +184,22 @@ def _settings_payload(conn: sqlite3.Connection) -> dict:
 
 ALLOWED_SKINS = {"solid", "glass", "glassplus"}
 ALLOWED_CHARTS = {"bars", "donut", "pie"}
+# 登录页背景："" 主题渐变（默认）/ "none" 无背景 / preset:xxx 内置 / 上传文件名
+ALLOWED_LOGIN_BG_EMPTY = {"", "none"}
+LOGIN_ICON_MAX_BYTES = 2 * 1024 * 1024   # 登录页图标 2MB
+CUSTOM_CATEGORIES_MAX = 20               # 自定义分类上限
+CUSTOM_CATEGORY_MAX_LEN = 12             # 单个分类字数上限
+
+
+def _load_custom_categories(conn: sqlite3.Connection) -> list[str]:
+    """custom_categories 存 JSON 数组；坏数据静默回落空列表。"""
+    raw = get_setting(conn, "custom_categories", "[]")
+    try:
+        data = json.loads(raw or "[]")
+        return [str(x) for x in data if isinstance(x, str)][:CUSTOM_CATEGORIES_MAX]
+    except Exception:
+        return []
+
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 # 内置预设背景：与 static/bg/*.jpg 一一对应（新增预设 = 加图 + 白名单加一行）
 ALLOWED_BG_PRESETS = {"aurora", "candy", "sunset"}
@@ -193,6 +267,47 @@ def put_settings(request: Request, body: dict):
             if body["chart_style"] not in ALLOWED_CHARTS:
                 raise HTTPException(status_code=400, detail="不支持的图表类型")
             set_setting(conn, "chart_style", body["chart_style"])
+        # ---- v1.5.0 登录页自定义 ----
+        if "login_title" in body:
+            v = str(body["login_title"] or "").strip()
+            if len(v) > 24:
+                raise HTTPException(status_code=400, detail="登录页标题不能超过 24 个字")
+            set_setting(conn, "login_title", v)
+        if "login_welcome" in body:
+            v = str(body["login_welcome"] or "").strip()
+            if len(v) > 40:
+                raise HTTPException(status_code=400, detail="欢迎语不能超过 40 个字")
+            set_setting(conn, "login_welcome", v)
+        if "login_bg" in body:
+            v = str(body["login_bg"] or "")
+            is_preset = v.startswith("preset:") and v.split(":", 1)[1] in ALLOWED_BG_PRESETS
+            if v not in ALLOWED_LOGIN_BG_EMPTY and not is_preset and not BRAND_RE.match(v):
+                raise HTTPException(status_code=400, detail="非法的登录页背景值")
+            set_setting(conn, "login_bg", v)
+        if "login_bg_mask" in body:
+            mask = int(body["login_bg_mask"])
+            if not 0 <= mask <= 80:
+                raise HTTPException(status_code=400, detail="遮罩浓度需在 0-80 之间")
+            set_setting(conn, "login_bg_mask", str(mask))
+        # ---- v1.5.0 分类管理 ----
+        if "custom_categories" in body:
+            raw = body["custom_categories"]
+            if not isinstance(raw, list):
+                raise HTTPException(status_code=400, detail="分类列表格式错误")
+            cats, seen = [], set()
+            for item in raw:
+                name = str(item or "").strip()
+                if not name:
+                    continue
+                if len(name) > CUSTOM_CATEGORY_MAX_LEN:
+                    raise HTTPException(status_code=400, detail=f"分类「{name}」超过 {CUSTOM_CATEGORY_MAX_LEN} 个字")
+                if name in seen:
+                    continue
+                seen.add(name)
+                cats.append(name)
+            if len(cats) > CUSTOM_CATEGORIES_MAX:
+                raise HTTPException(status_code=400, detail=f"自定义分类最多 {CUSTOM_CATEGORIES_MAX} 个")
+            set_setting(conn, "custom_categories", json.dumps(cats, ensure_ascii=False))
         # ---- v1.4.0 邮箱提醒 ----
         if "notify_enabled" in body:
             set_setting(conn, "notify_enabled", "1" if body["notify_enabled"] else "0")
@@ -494,7 +609,7 @@ def _save_brand_file(file: UploadFile, prefix: str, max_bytes: int) -> str:
     """通用品牌文件保存：魔数嗅探 + 大小限制，返回文件名。"""
     data = file.file.read(max_bytes + 1)
     if len(data) > max_bytes:
-        raise HTTPException(status_code=400, detail="图片不能超过 4MB")
+        raise HTTPException(status_code=400, detail=f"图片不能超过 {max_bytes // (1024 * 1024)}MB")
     ext = _sniff_image(data[:16])
     if not ext:
         raise HTTPException(status_code=400, detail="仅支持 PNG / JPG / WebP 图片")
@@ -580,6 +695,82 @@ def _brand_file_response(filename: str) -> FileResponse:
     media = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}[filename.rsplit(".", 1)[1]]
     return FileResponse(path, media_type=media,
                         headers={"Cache-Control": "private, max-age=3600"})
+
+
+# ---------------------------------------------------------------- 登录页自定义（v1.5.0）
+# 上传/修改需登录；读取公开——登录页在认证前就要渲染装饰配置。
+# 公开面仅暴露装饰性内容（标题/欢迎语/背景/图标），订阅等业务数据照旧锁在登录后。
+
+@app.get("/api/brand/login-page")
+def login_page_public():
+    """登录页装饰配置（公开无害：不包含任何邮箱、密码、订阅数据）。"""
+    with db() as conn:
+        icon_file = get_setting(conn, "login_icon", "") or get_setting(conn, "brand_icon", "")
+        return {
+            "app_name": get_setting(conn, "app_name", "SubDeck") or "SubDeck",
+            "login_title": get_setting(conn, "login_title", ""),
+            "login_welcome": get_setting(conn, "login_welcome", ""),
+            "login_bg": get_setting(conn, "login_bg", ""),
+            "login_bg_mask": int(get_setting(conn, "login_bg_mask", "45") or 45),
+            "theme_color": get_setting(conn, "theme_color", ""),
+            "icon_ver": icon_file,   # 文件名带时间戳，作为缓存破坏参数
+        }
+
+
+@app.post("/api/brand/login-icon")
+def upload_login_icon(request: Request, file: UploadFile = File(...)):
+    require_auth(request)
+    filename = _save_brand_file(file, "loginicon", LOGIN_ICON_MAX_BYTES)
+    with db() as conn:
+        _read_brand_setting(conn, "login_icon", filename)
+        return {"ok": True, "login_icon": filename}
+
+
+@app.delete("/api/brand/login-icon")
+def clear_login_icon(request: Request):
+    require_auth(request)
+    with db() as conn:
+        _read_brand_setting(conn, "login_icon", None)
+    return {"ok": True}
+
+
+@app.get("/api/brand/login-icon")
+def get_login_icon(request: Request):
+    """登录页图标（公开）：登录页自定义 → 品牌图标回落 → 404（前端回落首字母）。"""
+    with db() as conn:
+        filename = get_setting(conn, "login_icon", "") or get_setting(conn, "brand_icon", "")
+    if not filename:
+        raise HTTPException(status_code=404, detail="未设置登录页图标")
+    return _brand_file_response(filename)
+
+
+@app.post("/api/brand/login-background")
+def upload_login_background(request: Request, file: UploadFile = File(...)):
+    require_auth(request)
+    filename = _save_brand_file(file, "loginbg", BRAND_MAX_BYTES)
+    with db() as conn:
+        _read_brand_setting(conn, "login_bg", filename)
+        return {"ok": True, "login_bg": filename}
+
+
+@app.delete("/api/brand/login-background")
+def clear_login_background(request: Request):
+    """删除自定义登录页背景，回落主题渐变。"""
+    require_auth(request)
+    with db() as conn:
+        _read_brand_setting(conn, "login_bg", None)
+        set_setting(conn, "login_bg", "")
+    return {"ok": True}
+
+
+@app.get("/api/brand/login-background")
+def get_login_background(request: Request):
+    """登录页自定义背景图（公开；预设/渐变模式 404，前端走静态资源或 CSS 渐变）。"""
+    with db() as conn:
+        filename = get_setting(conn, "login_bg", "")
+    if not filename or filename.startswith("preset:") or filename == "none":
+        raise HTTPException(status_code=404, detail="未设置自定义登录页背景")
+    return _brand_file_response(filename)
 
 
 # ---------------------------------------------------------------- 扣费日历（月历视图数据源）

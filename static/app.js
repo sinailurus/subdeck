@@ -105,10 +105,13 @@ const state = {
   view: "dashboard",
   cal: { ym: null, byDate: {}, selected: null },
   form: { logoFile: null, logoPreview: null, clearLogo: false, color: PALETTE[0] },
+  loginBrand: {},   // v1.5.0 登录页装饰配置（公开端点 / settings 双来源）
 };
 
 /* ---------------- 启动 / 登录 ---------------- */
 async function boot() {
+  // 登录页装饰配置公开可读（v1.5.0）：未登录也能看到自定义标题/背景/图标
+  try { applyLoginBrand(await api("/api/brand/login-page")); } catch { /* 失败不阻塞登录流程 */ }
   state.me = await api("/api/me");
   if (state.me.auth_required && !state.me.logged_in) { showLogin(); return; }
   $("#login-view").classList.add("hidden");
@@ -194,12 +197,12 @@ function applyAppearance() {
   const s = state.settings || {};
   const name = s.app_name || "SubDeck";
   $("#brand-name").textContent = name;
-  $("#login-title").textContent = name;
   document.title = `${name} · 订阅管理`;
+  // 登录页装饰（标题/图标/背景）统一走 applyLoginBrandFromSettings（v1.5.0）
   const setBrand = (el) => {
     el.innerHTML = s.brand_icon ? `<img src="/api/brand/icon" alt="">` : "S";
   };
-  [$("#brand-mark"), $("#login-logo"), $("#icon-preview")].forEach(setBrand);
+  [$("#brand-mark"), $("#icon-preview")].forEach(setBrand);
   const iconHref = s.brand_icon ? `/api/brand/icon` : "/assets/icons/icon-192.png";
   document.querySelector('link[rel="icon"]').href = iconHref;
   document.querySelector('link[rel="apple-touch-icon"]').href = iconHref;
@@ -219,11 +222,11 @@ function applyAppearance() {
     bg.style.removeProperty("--bg-img");
     bg.style.removeProperty("--bg-mask-a");
   }
+  applyLoginBrandFromSettings();
 }
 
 /* 主题色注入：深色模式自动提亮（L+8），并同步浏览器地址栏 theme-color */
-function applyAccent() {
-  const color = state.settings?.theme_color;
+function applyAccentColor(color) {
   const rootStyle = document.documentElement.style;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (!color) { rootStyle.removeProperty("--accent"); meta.content = "#4f6ef7"; return; }
@@ -231,6 +234,50 @@ function applyAccent() {
   const lig = document.documentElement.dataset.theme === "dark" ? Math.min(l + 8, 78) : l;
   rootStyle.setProperty("--accent", `hsl(${h | 0} ${sa | 0}% ${lig | 0}%)`);
   meta.content = color;
+}
+function applyAccent() { applyAccentColor(state.settings?.theme_color); }
+
+/* ---------------- 登录页品牌渲染（v1.5.0，登录前公开生效） ----------------
+   数据来源二选一：公开端点 /api/brand/login-page（未登录）或 settings（登录后），
+   渲染函数统一走 applyLoginBrand。 */
+function applyLoginBrand(d) {
+  state.loginBrand = d || {};
+  const b = state.loginBrand;
+  const title = (b.login_title || b.app_name || "SubDeck").trim();
+  $("#login-title").textContent = title;
+  const welcome = $("#login-welcome");
+  const w = (b.login_welcome || "").trim();
+  if (w) { welcome.textContent = w; welcome.classList.remove("hidden"); }
+  else welcome.classList.add("hidden");
+  applyAccentColor(b.theme_color);
+  const lv = $("#login-view");
+  lv.classList.remove("bg-grad", "has-bg-img");
+  const bg = b.login_bg || "";
+  if (bg.startsWith("preset:")) {
+    lv.classList.add("has-bg-img");
+    lv.style.setProperty("--login-bg-img", `url("/assets/bg/${bg.slice(7)}.jpg")`);
+  } else if (/^(loginbg|bg)_\d+\.(png|jpg|webp)$/.test(bg)) {
+    lv.classList.add("has-bg-img");
+    lv.style.setProperty("--login-bg-img", `url("/api/brand/login-background?v=${encodeURIComponent(b.icon_ver || bg)}")`);
+  } else if (!bg) {
+    lv.classList.add("bg-grad");   // "" 主题渐变；"none" → 纯底色，不加任何装饰层
+  }
+  lv.style.setProperty("--login-mask-a", String((b.login_bg_mask ?? 45) / 100));
+  const logo = $("#login-logo");
+  if (b.icon_ver) {
+    logo.innerHTML = `<img src="/api/brand/login-icon?v=${encodeURIComponent(b.icon_ver)}" alt="">`;
+  } else {
+    logo.textContent = title.charAt(0).toUpperCase() || "S";   // 回落：登录页标题首字母
+  }
+}
+function applyLoginBrandFromSettings() {
+  const s = state.settings;
+  if (!s) return;
+  applyLoginBrand({
+    app_name: s.app_name, login_title: s.login_title, login_welcome: s.login_welcome,
+    login_bg: s.login_bg, login_bg_mask: s.login_bg_mask, theme_color: s.theme_color,
+    icon_ver: s.login_icon || s.brand_icon || "",
+  });
 }
 
 async function refreshRates() {
@@ -712,7 +759,154 @@ function renderSettings() {
   api("/api/ics-url").then((r) => { $("#ics-url").value = location.origin + r.url; })
     .catch(() => { $("#ics-url").value = location.origin + "/api/calendar.ics"; });
   renderAppearanceControls();
+  renderLoginControls();
+  renderCatChips();
+  renderCategoryOptions();
 }
+
+/* ---------------- 登录页设置面板（v1.5.0） ---------------- */
+function renderLoginControls() {
+  const s = state.settings;
+  $("#f-login-title").value = s.login_title || "";
+  $("#f-login-welcome").value = s.login_welcome || "";
+  $("#login-mask").value = s.login_bg_mask;
+  $("#login-mask-value").textContent = `${s.login_bg_mask}%`;
+  const isUpload = s.login_bg && !s.login_bg.startsWith("preset:") && s.login_bg !== "none";
+  document.querySelectorAll("#login-bg-picker .bg-card").forEach((b) => {
+    const v = b.dataset.bg || "";
+    b.classList.toggle("on",
+      isUpload ? false : v === (s.login_bg || ""));   // 自定义上传后由 upload-line 呈现选中态
+  });
+  $("#login-bg-upload-line").classList.toggle("hidden", !isUpload);
+  if (isUpload) $("#login-bg-upload-name").textContent = `✓ 已上传：${s.login_bg}`;
+  const pv = $("#login-icon-preview");
+  if (s.login_icon) pv.innerHTML = `<img src="/api/brand/login-icon?v=${encodeURIComponent(s.login_icon)}" alt="">`;
+  else if (s.brand_icon) pv.innerHTML = `<img src="/api/brand/icon" alt="">`;
+  else pv.textContent = (s.login_title || s.app_name || "S").trim().charAt(0).toUpperCase() || "S";
+}
+
+/* 背景卡即改即存（与外观预设一致） */
+$("#login-bg-picker").addEventListener("click", (e) => {
+  const b = e.target.closest("button.bg-card");
+  if (!b) return;
+  saveAppearance({ login_bg: b.dataset.bg || "" }, "登录页背景已更新，退出登录即可查看");
+});
+
+/* 遮罩滑条：拖动实时预览，松手落库 */
+$("#login-mask").addEventListener("input", () => {
+  $("#login-mask-value").textContent = `${$("#login-mask").value}%`;
+  $("#login-view").style.setProperty("--login-mask-a", String($("#login-mask").value / 100));
+});
+$("#login-mask").addEventListener("change", () => {
+  saveAppearance({ login_bg_mask: Number($("#login-mask").value) }, "遮罩已保存");
+});
+
+/* 自定义登录页背景上传 / 删除 */
+$("#login-bg-file").addEventListener("change", async () => {
+  const f = $("#login-bg-file").files[0];
+  if (!f) return;
+  const fd = new FormData(); fd.append("file", f);
+  try {
+    const r = await api("/api/brand/login-background", { method: "POST", body: fd });
+    state.settings.login_bg = r.login_bg;   // 上传接口已写入设置，前端只同步状态
+    applyAppearance(); renderLoginControls();
+    toast("登录页背景已更新，退出登录即可查看");
+  } catch (err) { if (err.message !== "unauthorized") toast("上传失败：" + err.message); }
+  $("#login-bg-file").value = "";
+});
+$("#btn-login-bg-clear").addEventListener("click", async () => {
+  try {
+    await api("/api/brand/login-background", { method: "DELETE" });
+    state.settings.login_bg = "";
+    applyAppearance(); renderLoginControls();
+    toast("已删除自定义背景，恢复主题渐变");
+  } catch (err) { if (err.message !== "unauthorized") toast("删除失败：" + err.message); }
+});
+
+/* 登录页标题 / 欢迎语保存 */
+$("#btn-save-login").addEventListener("click", async () => {
+  try {
+    state.settings = await api("/api/settings", { method: "PUT", body: {
+      login_title: $("#f-login-title").value,
+      login_welcome: $("#f-login-welcome").value,
+    }});
+    applyAppearance(); renderLoginControls();
+    toast("登录页设置已保存，退出登录即可查看");
+  } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
+});
+
+/* 登录页图标上传 / 删除（回落：品牌图标 → 标题首字母） */
+$("#login-icon-file").addEventListener("change", async () => {
+  const f = $("#login-icon-file").files[0];
+  if (!f) return;
+  const fd = new FormData(); fd.append("file", f);
+  try {
+    const r = await api("/api/brand/login-icon", { method: "POST", body: fd });
+    state.settings.login_icon = r.login_icon;
+    applyAppearance(); renderLoginControls();
+    toast("登录页图标已更新，退出登录即可查看");
+  } catch (err) { if (err.message !== "unauthorized") toast("上传失败：" + err.message); }
+  $("#login-icon-file").value = "";
+});
+$("#btn-login-icon-clear").addEventListener("click", async () => {
+  try {
+    await api("/api/brand/login-icon", { method: "DELETE" });
+    state.settings.login_icon = "";
+    applyAppearance(); renderLoginControls();
+    toast("已删除登录页图标，恢复跟随品牌图标 / 首字母");
+  } catch (err) { if (err.message !== "unauthorized") toast("删除失败：" + err.message); }
+});
+
+/* ---------------- 分类管理（v1.5.0） ---------------- */
+const BUILT_IN_CATS = Object.entries(CAT_LABEL);   // [key, label]
+
+function renderCatChips() {
+  const box = $("#cat-chips");
+  const custom = state.settings?.custom_categories || [];
+  box.innerHTML =
+    BUILT_IN_CATS.map(([k, label]) => `<span class="chip" title="内置分类">${label}</span>`).join("") +
+    custom.map((c) =>
+      `<span class="chip custom">${esc(c)}<button type="button" class="chip-del" data-cat="${esc(c)}" title="删除分类">✕</button></span>`
+    ).join("");
+}
+
+function renderCategoryOptions() {
+  const dl = $("#category-list");
+  if (!dl) return;
+  const custom = state.settings?.custom_categories || [];
+  dl.innerHTML =
+    BUILT_IN_CATS.map(([k, label]) => `<option value="${k}">${label}</option>`).join("") +
+    custom.map((c) => `<option value="${esc(c)}"></option>`).join("");
+}
+
+async function saveCustomCats(cats, msg) {
+  try {
+    state.settings = await api("/api/settings", { method: "PUT", body: { custom_categories: cats } });
+    renderCatChips(); renderCategoryOptions();
+    if (msg) toast(msg);
+  } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
+}
+
+async function addCustomCat() {
+  const name = $("#f-new-cat").value.trim();
+  if (!name) return;
+  const custom = state.settings?.custom_categories || [];
+  const dupBuiltIn = BUILT_IN_CATS.some(([k, label]) => k === name || label === name);
+  if (dupBuiltIn || custom.includes(name)) { toast("分类已存在"); return; }
+  if (custom.length >= 20) { toast("自定义分类最多 20 个"); return; }
+  await saveCustomCats([...custom, name], `已添加分类「${name}」`);
+  $("#f-new-cat").value = "";
+}
+
+$("#btn-add-cat").addEventListener("click", addCustomCat);
+$("#f-new-cat").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addCustomCat(); } });
+$("#cat-chips").addEventListener("click", (e) => {
+  const del = e.target.closest(".chip-del");
+  if (!del) return;
+  const cat = del.dataset.cat;
+  const custom = (state.settings?.custom_categories || []).filter((c) => c !== cat);
+  saveCustomCats(custom, `已删除分类「${cat}」，已有订阅不受影响`);
+})
 
 /* 外观面板控件赋值（服务端值 → 控件） */
 function renderAppearanceControls() {

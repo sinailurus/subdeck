@@ -16,7 +16,7 @@ def call(method, path, data=None, cookie=None, raw=None, headers=None, expect=20
         with urllib.request.urlopen(req, timeout=15) as r:
             code, ct, payload, sc = r.status, r.headers.get("Content-Type",""), r.read(), r.headers.get("Set-Cookie","")
     except urllib.error.HTTPError as e:
-        code, ct, payload, sc = e.code, "", e.read(), ""
+        code, ct, payload, sc = e.code, e.headers.get("Content-Type",""), e.read(), ""
     assert code == expect, f"{method} {path} -> {code} (expect {expect}): {payload[:200]}"
     return (json.loads(payload) if "json" in ct else payload), sc
 
@@ -265,6 +265,72 @@ def preset_bg():
     assert not b["bg_image"], b
 check("预设背景切换+校验+互斥", preset_bg)
 
+# ---- v1.5.0 登录页自定义 + 分类管理 ----
+def login_page_custom():
+    # 公开端点：未登录可读，且只含装饰字段、不含任何敏感数据
+    body, _ = call("GET", "/api/brand/login-page")
+    for k in ("app_name", "login_title", "login_welcome", "login_bg", "login_bg_mask", "theme_color", "icon_ver"):
+        assert k in body, k
+    for bad in ("notify_emails", "smtp_pass", "subscriptions", "smtp_host"):
+        assert bad not in body, bad
+    # 配置写入与校验
+    b, _ = call("PUT", "/api/settings", {"login_title": "家庭订阅中心", "login_welcome": "统一管理全家订阅，请登录继续",
+                "login_bg": "preset:sunset", "login_bg_mask": 55}, cookie=C)
+    assert b["login_title"] == "家庭订阅中心" and b["login_bg"] == "preset:sunset" and b["login_bg_mask"] == 55, b
+    call("PUT", "/api/settings", {"login_title": "x" * 25}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"login_welcome": "x" * 41}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"login_bg_mask": 81}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"login_bg": "preset:nope"}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"login_bg": "../../etc/passwd"}, cookie=C, expect=400)
+    body, _ = call("GET", "/api/brand/login-page")
+    assert body["login_title"] == "家庭订阅中心" and body["login_bg"] == "preset:sunset", body
+    # 登录页图标：上传 → 公开读 → 删除回落
+    call("GET", "/api/brand/login-icon", expect=404)   # 此前用例已清理 brand_icon，无图标可回落
+    png = tiny_png(); bd = "----bdL"
+    part = (f"--{bd}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"icon.png\"\r\n"
+            f"Content-Type: image/png\r\n\r\n").encode() + png + b"\r\n" + f"--{bd}--\r\n".encode()
+    call("POST", "/api/brand/login-icon", raw=part,
+         headers={"Content-Type": f"multipart/form-data; boundary={bd}"}, cookie=C)
+    body, _ = call("GET", "/api/brand/login-icon")
+    assert body[:4] == b"\x89PNG"
+    body, _ = call("GET", "/api/brand/login-page")
+    assert body["icon_ver"].startswith("loginicon_"), body
+    # 自定义登录页背景：上传 → 公开读 → preset 覆盖后 404（走静态资源）→ 删除回落渐变
+    bd2 = "----bdL2"
+    part2 = (f"--{bd2}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"bg.png\"\r\n"
+             f"Content-Type: image/png\r\n\r\n").encode() + png + b"\r\n" + f"--{bd2}--\r\n".encode()
+    b, _ = call("POST", "/api/brand/login-background", raw=part2,
+                headers={"Content-Type": f"multipart/form-data; boundary={bd2}"}, cookie=C)
+    assert b["login_bg"].startswith("loginbg_"), b
+    call("GET", "/api/brand/login-background")
+    call("PUT", "/api/settings", {"login_bg": "preset:aurora"}, cookie=C)
+    call("GET", "/api/brand/login-background", expect=404)
+    # 未登录上传 401
+    call("POST", "/api/brand/login-icon", raw=part,
+         headers={"Content-Type": f"multipart/form-data; boundary={bd}"}, expect=401)
+    call("DELETE", "/api/brand/login-background", cookie=C)
+    call("DELETE", "/api/brand/login-icon", cookie=C)
+    b, _ = call("GET", "/api/settings", cookie=C)
+    assert not b["login_icon"] and b["login_bg"] == "", b
+    call("PUT", "/api/settings", {"login_title": "", "login_welcome": "", "login_bg_mask": 45}, cookie=C)
+check("登录页自定义+公开端点", login_page_custom)
+
+def custom_categories():
+    b, _ = call("PUT", "/api/settings", {"custom_categories": ["健身", "AI 工具"]}, cookie=C)
+    assert b["custom_categories"] == ["健身", "AI 工具"], b
+    # trim / 去空 / 去重
+    b, _ = call("PUT", "/api/settings", {"custom_categories": [" 健身 ", "", "AI 工具"]}, cookie=C)
+    assert b["custom_categories"] == ["健身", "AI 工具"], b
+    # 越界拒绝
+    call("PUT", "/api/settings", {"custom_categories": ["x" * 13]}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"custom_categories": [str(i) for i in range(21)]}, cookie=C, expect=400)
+    call("PUT", "/api/settings", {"custom_categories": "bad"}, cookie=C, expect=400)
+    # 删除自定义分类不影响已有订阅
+    call("PUT", "/api/settings", {"custom_categories": []}, cookie=C)
+    b, _ = call("GET", "/api/subscriptions", cookie=C)
+    assert any(s["category"] == "video" for s in b), b
+check("分类管理增删校验", custom_categories)
+
 def manifest_dyn():
     # 注意：call() 第二个返回值是 Set-Cookie 头，不是 Content-Type；JSON 校验用 isinstance
     body, _ = call("GET", "/manifest.webmanifest")
@@ -281,6 +347,32 @@ def delete():
     b, _ = call("GET", "/api/subscriptions", cookie=C)
     assert len(b) == 1
 check("删除订阅", delete)
+
+# ---- v1.5.0 安全加固 ----
+def security_headers():
+    req = urllib.request.Request(BASE + "/api/health")
+    with urllib.request.urlopen(req, timeout=15) as r:
+        h = {k.lower(): v for k, v in r.headers.items()}
+    for k, want in (("x-content-type-options", "nosniff"), ("x-frame-options", "DENY"),
+                    ("referrer-policy", "strict-origin-when-cross-origin")):
+        assert h.get(k) == want, (k, h.get(k))
+    csp = h.get("content-security-policy", "")
+    for frag in ("default-src 'self'", "script-src 'self'", "frame-ancestors 'none'"):
+        assert frag in csp, csp
+check("安全响应头齐全", security_headers)
+
+def login_throttle():
+    """连续失败 5 次 → 429 锁定；锁定期内正确密码也 429；已登录会话不受影响。
+    放在最后执行：会锁死 127.0.0.1 的登录 15 分钟（进程内计数）。"""
+    for i in range(4):
+        call("POST", "/api/login", {"password": "wrong"}, expect=401)
+    body, _ = call("POST", "/api/login", {"password": "wrong"}, expect=429)
+    assert "锁定" in body.get("detail", "") or "分钟" in body.get("detail", ""), body
+    # 锁定期内：正确密码也被拒（429），但已持有的会话 cookie 照常可用
+    call("POST", "/api/login", {"password": os.environ.get("SUBDECK_PW", "test123")}, expect=429)
+    b, _ = call("GET", "/api/subscriptions", cookie=C)
+    assert isinstance(b, list), b
+check("登录限速防暴力破解", login_throttle)
 
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)
