@@ -33,7 +33,7 @@
 ### 方式二：本地构建
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/subdeck.git
+git clone https://github.com/sinailurus/subdeck.git
 cd subdeck
 cp .env.example .env        # 修改 AUTH_PASSWORD
 docker compose up -d        # 默认使用 8300 端口
@@ -163,7 +163,7 @@ python3 tests/e2e.py
 - 任何商用（集成进商业产品、转售、付费托管服务等）：需**事先获得作者书面授权**
 - v1.0.0 及更早版本仍按 MIT 授权（协议变更不可追溯历史版本）
 
-© 2026 COPYRIGHT_HOLDER · 源码仓库见 `Required Notice`
+© 2026 sinailurus · 源码仓库见 `Required Notice`
 
 ## 免责声明
 
