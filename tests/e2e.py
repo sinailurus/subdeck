@@ -429,6 +429,45 @@ def custom_rates_flow():
     assert d["custom"] == {} and d["missing"] == [], d
 check("币种放开+手动汇率全链路", custom_rates_flow)
 
+# ---- v1.6.3 订阅暂停/恢复 ----
+def pause_resume_flow():
+    """创建→暂停（不进统计/待付款/日历）→恢复→编辑表单 active=0 也生效。"""
+    # 1. 创建两个订阅（一个暂停目标 + 一个对照）
+    b, _ = call("POST", "/api/subscriptions", {"name": "暂停测试", "amount": 30, "currency": "CNY",
+        "cycle": "monthly", "next_billing_date": "2026-12-01"}, cookie=C)
+    pid = b["id"]
+    b2, _ = call("POST", "/api/subscriptions", {"name": "对照订阅", "amount": 10, "currency": "CNY",
+        "cycle": "monthly", "next_billing_date": "2026-12-02"}, cookie=C)
+    stats0, _ = call("GET", "/api/stats", cookie=C)
+    m0 = stats0["monthly_total"]
+    # 2. 列表接口返回 active 字段
+    subs, _ = call("GET", "/api/subscriptions", cookie=C)
+    assert all("active" in s for s in subs), subs[0]
+    # 3. 暂停 → active=0、不进统计（月均总额减少 30）、待付款不含它、日历不含它
+    call("PUT", f"/api/subscriptions/{pid}", {"active": 0}, cookie=C)
+    subs, _ = call("GET", "/api/subscriptions", cookie=C)
+    p = next(s for s in subs if s["id"] == pid)
+    assert p["active"] == 0, p
+    stats1, _ = call("GET", "/api/stats", cookie=C)
+    assert stats1["monthly_total"] == m0 - 30, (m0, stats1)
+    assert stats1["active_count"] == len([s for s in subs if s["active"] == 1]), stats1
+    ics, _ = call("GET", "/api/calendar.ics", cookie=C)
+    ics = ics.decode("utf-8") if isinstance(ics, bytes) else ics
+    assert "暂停测试" not in ics and "对照订阅" in ics, ics[:200]
+    # 4. 恢复 → 金额回到统计
+    call("PUT", f"/api/subscriptions/{pid}", {"active": 1}, cookie=C)
+    stats2, _ = call("GET", "/api/stats", cookie=C)
+    assert stats2["monthly_total"] == m0, stats2
+    # 5. 编辑路径：active=0 与金额一起提交也生效
+    call("PUT", f"/api/subscriptions/{pid}", {"active": 0, "amount": 50}, cookie=C)
+    subs, _ = call("GET", "/api/subscriptions", cookie=C)
+    p = next(s for s in subs if s["id"] == pid)
+    assert p["active"] == 0 and p["amount"] == 50, p
+    # 6. 清理
+    call("DELETE", f"/api/subscriptions/{pid}", cookie=C)
+    call("DELETE", f"/api/subscriptions/{b2['id']}", cookie=C)
+check("订阅暂停/恢复全链路", pause_resume_flow)
+
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)
 print("ALL TESTS PASSED")

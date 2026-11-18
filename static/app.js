@@ -311,6 +311,11 @@ function renderStats() {
   $("#stat-monthly").textContent = fmtMoney(s.monthly_total, base);
   $("#stat-yearly").textContent = fmtMoney(s.yearly_total, base);
   $("#stat-count").textContent = s.active_count;
+  // v1.6.3：活跃订阅数旁提示已暂停数量（暂停数 = 列表总数 - 活跃数）
+  const pausedN = (state.subs || []).length - s.active_count;
+  const hint = $("#stat-paused-hint");
+  if (pausedN > 0) { hint.textContent = `另有 ${pausedN} 个已暂停`; hint.style.display = ""; }
+  else { hint.style.display = "none"; }
   $("#stat-pending").textContent = s.pending_count;
   $("#stat-pending-card").classList.toggle("alarm", s.pending_count > 0);
 }
@@ -532,30 +537,35 @@ function renderSubs() {
   }
   // 桌面表格
   $("#subs-tbody").innerHTML = subs.length ? subs.map((s) => `
-    <tr>
+    <tr class="${s.active ? "" : "row-paused"}">
       <td><div class="sub-name">${avatarHTML(s, "avatar sub-table-logo")}
-        <div><div class="n">${esc(s.name)}</div>
+        <div><div class="n">${esc(s.name)}${s.active ? "" : ` <span class="paused-tag">已暂停</span>`}</div>
         ${s.category ? `<div class="cat-tag">${esc(catLabel(s.category))}</div>` : ""}</div></div></td>
       <td class="ta-r amount-cell">${fmtMoney(s.amount, s.currency)}
         ${s.currency !== base && s.amount_converted != null
           ? `<small>≈ ${fmtMoney(s.amount_converted, base)}</small>` : ""}</td>
       <td>${CYCLE_LABEL[s.cycle]}</td>
-      <td><span class="due-badge ${dueClass(s.days_until)}">${fmtDate(s.next_billing_date)} · ${dueLabel(s.days_until)}</span></td>
+      <td>${s.active
+        ? `<span class="due-badge ${dueClass(s.days_until)}">${fmtDate(s.next_billing_date)} · ${dueLabel(s.days_until)}</span>`
+        : `<span class="due-badge paused">已暂停</span>`}</td>
       <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span></td>
       <td class="muted">${esc(catLabel(s.category))}</td>
       <td class="ta-r"><div class="row-actions">
         <button class="icon-btn" data-act="edit" data-id="${s.id}" title="编辑"><svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+        ${s.active
+          ? `<button class="icon-btn" data-act="pause" data-id="${s.id}" title="暂停（不进统计与提醒）"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>`
+          : `<button class="icon-btn" data-act="resume" data-id="${s.id}" title="恢复"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5Z" fill="currentColor"/></svg></button>`}
         <button class="icon-btn" data-act="del" data-id="${s.id}" title="删除"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div></td>
     </tr>`).join("")
     : `<tr><td colspan="7"><div class="pending-empty">${t("noSubs")}</div></td></tr>`;
   // 手机卡片
   $("#subs-cards").innerHTML = subs.length ? subs.map((s) => `
-    <div class="sub-card">
+    <div class="sub-card ${s.active ? "" : "row-paused"}">
       ${avatarHTML(s)}
       <div class="mid">
         <div class="n">${esc(s.name)}
-          <span class="pay-tag pay-${s.payment_method}" style="font-size:11.5px">${s.payment_method === "auto" ? "自动" : "手动"}</span></div>
+          <span class="pay-tag pay-${s.payment_method}" style="font-size:11.5px">${s.payment_method === "auto" ? "自动" : "手动"}</span>${s.active ? "" : ` <span class="paused-tag">已暂停</span>`}</div>
         <div class="meta">
           <span>${CYCLE_LABEL[s.cycle]}</span>
           ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
@@ -563,13 +573,18 @@ function renderSubs() {
         </div>
         <div class="card-actions">
           <button class="icon-btn" data-act="edit" data-id="${s.id}"><svg viewBox="0 0 24 24" width="15" height="15"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+          ${s.active
+            ? `<button class="icon-btn" data-act="pause" data-id="${s.id}" title="暂停"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>`
+            : `<button class="icon-btn" data-act="resume" data-id="${s.id}" title="恢复"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M7 4.5v15l13-7.5Z" fill="currentColor"/></svg></button>`}
           <button class="icon-btn" data-act="del" data-id="${s.id}"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>
       <div class="right">
         <div class="amt">${fmtMoney(s.amount, s.currency)}</div>
-        <span class="due-badge ${dueClass(s.days_until)} due">${dueLabel(s.days_until)}</span>
-        <div class="muted small" style="margin-top:3px">${fmtDate(s.next_billing_date)}</div>
+        ${s.active
+          ? `<span class="due-badge ${dueClass(s.days_until)} due">${dueLabel(s.days_until)}</span>
+             <div class="muted small" style="margin-top:3px">${fmtDate(s.next_billing_date)}</div>`
+          : `<span class="due-badge paused due">已暂停</span>`}
       </div>
     </div>`).join("")
     : `<div class="panel"><div class="pending-empty">${t("noSubs")}</div></div>`;
@@ -583,6 +598,17 @@ document.addEventListener("click", async (e) => {
   const sub = state.subs.find((s) => s.id === id);
   if (!sub) return;
   if (btn.dataset.act === "edit") openModal(sub);
+  if (btn.dataset.act === "pause" || btn.dataset.act === "resume") {
+    const active = btn.dataset.act === "resume" ? 1 : 0;
+    try {
+      await api(`/api/subscriptions/${id}`, { method: "PUT", body: { active } });
+      toast(active
+        ? `已恢复「${sub.name}」`
+        : `已暂停「${sub.name}」，不进统计与提醒，随时可恢复`);
+      await refreshData(); renderAll();
+    } catch (err) { toast(err.message || "操作失败"); }
+    return;
+  }
   if (btn.dataset.act === "del" && confirm(t("confirmDel", sub.name))) {
     await api(`/api/subscriptions/${id}`, { method: "DELETE" });
     toast(t("deleted"));
@@ -609,6 +635,7 @@ function openModal(sub = null) {
   fillCurrencyOptions().then(() => {   // 确保下拉已填充再赋值
     $("#f-currency").value = sub?.currency || state.settings.base_currency;
   });
+  $("#f-active").checked = sub ? !!sub.active : true;   // v1.6.3 暂停/恢复
   $("#modal-title").textContent = sub ? "编辑订阅" : "添加订阅";
   $("#f-id").value = sub?.id || "";
   $("#f-name").value = sub?.name || "";
@@ -710,6 +737,7 @@ $("#sub-form").addEventListener("submit", async (e) => {
     url: $("#f-url").value.trim(),
     notes: $("#f-notes").value,
     color: state.form.color,
+    active: $("#f-active").checked ? 1 : 0,
   };
   try {
     let saved;
