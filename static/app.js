@@ -101,8 +101,9 @@ async function api(path, opts = {}) {
 const state = {
   me: null, settings: null, ratesInfo: null,
   subs: [], stats: null,
-  filter: "all", search: "",
+  filter: "all", search: "", sort: "",
   view: "dashboard",
+  cal: { ym: null, byDate: {}, selected: null },
   form: { logoFile: null, logoPreview: null, clearLogo: false, color: PALETTE[0] },
 };
 
@@ -174,10 +175,11 @@ function renderAll() {
 /* ---------------- 导航 ---------------- */
 function switchView(name) {
   state.view = name;
-  for (const v of ["dashboard", "subs", "settings"])
+  for (const v of ["dashboard", "subs", "calendar", "settings"])
     $("#view-" + v).classList.toggle("hidden", v !== name);
   document.querySelectorAll(".nav-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.nav === name));
+  if (name === "calendar") refreshCalendar();   // 每次切入拉最新推算数据
 }
 document.querySelectorAll(".nav-btn").forEach((b) =>
   b.addEventListener("click", () => switchView(b.dataset.nav)));
@@ -368,6 +370,104 @@ function renderTimeline() {
     : `<div class="tl-empty">${t("noUpcoming")}</div>`;
 }
 
+/* ---------------- 扣费日历 ---------------- */
+const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const todayISO = () => localISO(new Date());
+
+async function refreshCalendar() {
+  try {
+    const r = await api("/api/billing-calendar?months=12");
+    state.cal.byDate = {};
+    for (const e of r.entries) (state.cal.byDate[e.date] ||= []).push(e);
+    if (!state.cal.ym) state.cal.ym = todayISO().slice(0, 7);
+    if (!state.cal.selected) {
+      // 默认选中下一个有续费的日期（第一眼看到内容），否则今天
+      state.cal.selected = r.entries.length ? r.entries[0].date : todayISO();
+    }
+    renderCalendar();
+    renderCalDetail(state.cal.selected);
+  } catch (err) { if (err.message !== "unauthorized") $("#cal-detail").innerHTML = `<div class="cal-detail-empty">加载失败：${esc(err.message)}</div>`; }
+}
+
+function renderCalendar() {
+  const [y, m] = state.cal.ym.split("-").map(Number);
+  $("#cal-title").textContent = `${y} 年 ${m} 月`;
+  const cur = state.settings.base_currency;
+  const first = new Date(y, m - 1, 1);
+  const offset = (first.getDay() + 6) % 7;              // 周一开头
+  const daysIn = new Date(y, m, 0).getDate();
+  const today = todayISO();
+  let html = "";
+  for (let i = 0; i < offset; i++) html += `<span class="cal-cell dim" aria-hidden="true"></span>`;
+  for (let day = 1; day <= daysIn; day++) {
+    const ds = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const list = state.cal.byDate[ds] || [];
+    const isToday = ds === today;
+    const isSel = state.cal.selected === ds;
+    const currencies = new Set(list.map((e) => e.currency));
+    const total = list.reduce((a, e) => a + e.amount, 0);
+    const amt = list.length && currencies.size === 1
+      ? `<span class="amt">${sym(list[0].currency)}${total % 1 ? total.toFixed(1) : total}</span>` : "";
+    const cls = ["cal-cell", isToday ? "today" : "", isSel && !isToday ? "selected" : ""].join(" ");
+    html += `<button type="button" class="${cls}" data-date="${ds}" aria-label="${ds}${list.length ? `，${list.length} 笔续费` : ""}">
+      <span class="d">${day}</span>
+      ${list.length ? `<span class="dots">${list.map(() => `<span class="dot"></span>`).join("")}</span>` : ""}
+      ${amt}
+    </button>`;
+  }
+  $("#cal-grid").innerHTML = html;
+  // 月合计（同币种才显示）
+  const monthPrefix = `${y}-${String(m).padStart(2, "0")}`;
+  const monthList = Object.entries(state.cal.byDate).filter(([d]) => d.startsWith(monthPrefix)).flatMap(([, l]) => l);
+  const mc = new Set(monthList.map((e) => e.currency));
+  const mt = $("#cal-month-total");
+  if (monthList.length && mc.size === 1) {
+    const sum = monthList.reduce((a, e) => a + e.amount, 0);
+    mt.innerHTML = `本月共 ${monthList.length} 笔 · 合计 <strong>${fmtMoney(sum, monthList[0].currency)}</strong>`;
+    mt.classList.remove("hidden");
+  } else mt.classList.add("hidden");
+}
+
+function renderCalDetail(ds) {
+  const list = state.cal.byDate[ds] || [];
+  $("#cal-detail-title").textContent =
+    `${Number(ds.slice(5, 7))} 月 ${Number(ds.slice(8, 10))} 日 · ${list.length} 笔续费`;
+  $("#cal-detail").innerHTML = list.length
+    ? list.map((e) => {
+        const s = state.subs.find((x) => x.id === e.id) || e;
+        const conv = s.currency !== state.settings.base_currency && s.amount_converted != null
+          ? `<small> ≈ ${fmtMoney(s.amount_converted, state.settings.base_currency)}</small>` : "";
+        return `<div class="cal-item">
+          ${avatarHTML(s)}
+          <div><div class="tl-name">${esc(e.name)}</div>
+          ${e.category ? `<span class="cat-tag">${esc(catLabel(e.category))}</span>` : ""}</div>
+          <span class="tl-amount">${fmtMoney(e.amount, e.currency)}${conv}</span>
+        </div>`;
+      }).join("")
+    : `<div class="cal-detail-empty">该日没有续费计划</div>`;
+}
+
+function shiftMonth(n) {
+  const [y, m] = state.cal.ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  state.cal.ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  renderCalendar();
+}
+$("#cal-prev").addEventListener("click", () => shiftMonth(-1));
+$("#cal-next").addEventListener("click", () => shiftMonth(1));
+$("#cal-today").addEventListener("click", () => {
+  state.cal.ym = todayISO().slice(0, 7);
+  renderCalendar();
+  renderCalDetail(state.cal.selected);
+});
+$("#cal-grid").addEventListener("click", (e) => {
+  const cell = e.target.closest(".cal-cell[data-date]");
+  if (!cell || cell.classList.contains("dim")) return;
+  state.cal.selected = cell.dataset.date;
+  renderCalendar();
+  renderCalDetail(cell.dataset.date);
+});
+
 /* ---------------- 订阅列表 ---------------- */
 async function reloadSubs() {
   const q = state.search ? `&search=${encodeURIComponent(state.search)}` : "";
@@ -377,7 +477,11 @@ async function reloadSubs() {
 
 function renderSubs() {
   const base = state.settings.base_currency;
-  const subs = state.subs;
+  let subs = state.subs;
+  if (state.sort === "asc" || state.sort === "desc") {
+    const val = (s) => (s.amount_converted ?? s.amount ?? 0);   // 按折算后金额比较，跨币种才有意义
+    subs = [...subs].sort((a, b) => state.sort === "asc" ? val(a) - val(b) : val(b) - val(a));
+  }
   // 桌面表格
   $("#subs-tbody").innerHTML = subs.length ? subs.map((s) => `
     <tr>
@@ -510,6 +614,15 @@ function currentSub() {
 }
 
 $("#btn-add").addEventListener("click", () => openModal());
+
+/* 排序按钮：默认 → 金额 ↑ → 金额 ↓ 循环（按折算后金额） */
+const SORT_LABEL = { "": "默认排序", asc: "金额 ↑", desc: "金额 ↓" };
+$("#btn-sort").addEventListener("click", () => {
+  const order = ["", "asc", "desc"];
+  state.sort = order[(order.indexOf(state.sort) + 1) % order.length];
+  $("#btn-sort").textContent = SORT_LABEL[state.sort];
+  renderSubs();
+});
 $("#btn-cancel").addEventListener("click", () => $("#modal-mask").classList.add("hidden"));
 $("#modal-mask").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) $("#modal-mask").classList.add("hidden");

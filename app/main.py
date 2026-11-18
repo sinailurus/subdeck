@@ -15,7 +15,7 @@ from .currencies import CURRENCIES, CYCLES, PAYMENT_METHODS
 from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.3.0"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
@@ -497,6 +497,40 @@ def _brand_file_response(filename: str) -> FileResponse:
     media = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}[filename.rsplit(".", 1)[1]]
     return FileResponse(path, media_type=media,
                         headers={"Cache-Control": "private, max-age=3600"})
+
+
+# ---------------------------------------------------------------- 扣费日历（月历视图数据源）
+
+@app.get("/api/billing-calendar")
+def billing_calendar(request: Request, months: int = 12):
+    """未来 N 个月的扣费日程：按周期从 next_billing_date 向前推算（单一事实源）。
+
+    返回 entries 按日期升序；weekly 按周推、月/季/半年/年按日历月推（月末收缩与
+    ensure_rolled 同语义），前端月历直接消费，不重复实现推算逻辑。
+    """
+    require_auth(request)
+    months = max(1, min(months, 24))
+    today = billing.TODAY
+    end = billing.add_months(today, months)
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id,name,amount,currency,cycle,next_billing_date,category,logo_file "
+            "FROM subscriptions WHERE active=1").fetchall()
+        subs = [billing.ensure_rolled(conn, r) for r in rows]
+    entries = []
+    for s in subs:
+        d = datetime.date.fromisoformat(s["next_billing_date"])
+        while d <= end:
+            if d >= today:
+                entries.append({
+                    "date": d.isoformat(), "id": s["id"], "name": s["name"],
+                    "amount": s["amount"], "currency": s["currency"],
+                    "cycle": s["cycle"], "category": s["category"],
+                    "logo_url": f"/api/logo/{s['logo_file']}" if s["logo_file"] else "",
+                })
+            d = billing.add_cycle(d, s["cycle"])
+    entries.sort(key=lambda e: e["date"])
+    return {"entries": entries, "months": months}
 
 
 # ---------------------------------------------------------------- 统计

@@ -35,6 +35,7 @@
     <nav class="topnav" aria-label="主导航">
       <button data-nav="dashboard" class="nav-btn">概览</button>
       <button data-nav="subs" class="nav-btn">订阅</button>
+      <button data-nav="calendar" class="nav-btn">日历</button>
       <button data-nav="settings" class="nav-btn">设置</button>
     </nav>
     <div class="topbar-actions">
@@ -92,6 +93,7 @@
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <input type="search" id="search-input" placeholder="搜索名称或分类">
         </div>
+        <button id="btn-sort" class="btn" title="按金额排序">默认排序</button>
         <div class="chips" id="filter-chips">
           <button class="chip active" data-filter="all">全部</button>
           <button class="chip" data-filter="auto">自动扣费</button>
@@ -112,6 +114,30 @@
         </table>
       </div>
       <div id="subs-cards" class="subs-cards"></div>
+    </section>
+
+    <!-- 日历 -->
+    <section id="view-calendar" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 id="cal-title">--</h2>
+          <div class="cal-nav">
+            <button id="cal-prev" class="icon-btn" aria-label="上个月"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button id="cal-today" class="btn small ghost">今天</button>
+            <button id="cal-next" class="icon-btn" aria-label="下个月"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
+        <div class="cal-week">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="cal-weekend">六</span><span class="cal-weekend">日</span>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <p class="cal-month-total hidden" id="cal-month-total"></p>
+        <p class="muted small cal-hint">圆点为续费日，格内小字为当日合计金额；可翻看未来 12 个月。</p>
+      </div>
+      <div class="panel">
+        <h2 id="cal-detail-title">选择日期</h2>
+        <div id="cal-detail" class="cal-detail"></div>
+      </div>
     </section>
 
     <!-- 设置 -->
@@ -230,6 +256,10 @@
     <button data-nav="subs" class="nav-btn">
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <span>订阅</span>
+    </button>
+    <button data-nav="calendar" class="nav-btn">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>日历</span>
     </button>
     <button data-nav="settings" class="nav-btn">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3m0 14v3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M2 12h3m14 0h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>

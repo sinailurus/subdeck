@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """SubDeck 端到端验证。"""
-import json, os, struct, urllib.request, urllib.error, zlib
+import datetime, json, os, struct, urllib.request, urllib.error, zlib
 
 BASE = os.environ.get("SUBDECK_BASE", "http://127.0.0.1:8017")
 PASS, FAIL = [], []
@@ -132,6 +132,21 @@ def ics():
     ics = ics.decode()
     assert "BEGIN:VCALENDAR" in ics and "Netflix" in ics
 check("iCal带token订阅", ics)
+
+def billing_cal():
+    b, _ = call("GET", "/api/billing-calendar?months=12", cookie=C)
+    es = b["entries"]
+    assert b["months"] == 12 and es, b
+    dates = [e["date"] for e in es]
+    assert dates == sorted(dates), "entries 应按日期升序"
+    today = datetime.date.today().isoformat()
+    assert all(d >= today for d in dates), "应只包含今天及以后"
+    assert len(dates) >= 10, f"月付订阅 12 个月应推算 ≥10 次，实际 {len(dates)}"
+    # 越界参数收敛
+    b, _ = call("GET", "/api/billing-calendar?months=999", cookie=C)
+    assert b["months"] == 24
+    b, _ = call("GET", "/api/billing-calendar", expect=401)
+check("扣费日历推算", billing_cal)
 
 def statics():
     body, _ = call("GET", "/")

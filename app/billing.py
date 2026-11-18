@@ -53,6 +53,14 @@ def ensure_rolled(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
     return sub
 
 
+def add_months(d: datetime.date, months: int) -> datetime.date:
+    """加 N 个日历月（月末自动收缩：31 号遇 2 月落月末），与 add_cycle 同语义。"""
+    total = d.year * 12 + (d.month - 1) + months
+    year, month = divmod(total, 12)
+    month += 1
+    return datetime.date(year, month, min(d.day, calendar.monthrange(year, month)[1]))
+
+
 def monthly_factor(cycle: str) -> float:
     return CYCLES[cycle][2]
 
