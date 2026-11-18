@@ -132,7 +132,13 @@ def ics():
     ics, _ = call("GET", b["url"])
     ics = ics.decode()
     assert "BEGIN:VCALENDAR" in ics and "Netflix" in ics
-check("iCal带token订阅", ics)
+    # v1.5.1：令牌持久化——两次获取的 URL 完全一致（手机日历订阅一次长期有效）
+    b2, _ = call("GET", "/api/ics-url", cookie=C)
+    assert b2["url"] == b["url"], (b["url"], b2["url"])
+    # 固定令牌可访问；错误令牌 401
+    call("GET", b2["url"])
+    call("GET", "/api/calendar.ics?token=not-a-token", expect=401)
+check("iCal带token订阅+令牌持久化", ics)
 
 def billing_cal():
     b, _ = call("GET", "/api/billing-calendar?months=12", cookie=C)

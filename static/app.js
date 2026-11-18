@@ -1116,6 +1116,8 @@ $("#f-notify-lead").addEventListener("input", () => {
   $("#notify-lead-preview").textContent = $("#f-notify-lead").value || 3;
 });
 
+$("#ics-url").addEventListener("click", () => $("#ics-url").select());   // 点击全选整条 URL，防止只复制到尾部 token
+
 $("#btn-copy-ics").addEventListener("click", async () => {
   const url = $("#ics-url").value;
   try { await navigator.clipboard.writeText(url); toast(t("copied")); }

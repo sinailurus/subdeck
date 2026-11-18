@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """SubDeck —— 自部署订阅管理（FastAPI 后端入口）。"""
 import datetime
+import hmac
 import json
 import os
 import re
+import secrets
 import shutil
 import sqlite3
 import threading
@@ -19,7 +21,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
@@ -852,18 +854,40 @@ def stats(request: Request):
 
 # ---------------------------------------------------------------- 日历订阅
 
+def _valid_ics_token(token: str) -> bool:
+    """校验持久化日历令牌（v1.5.1）：settings.ics_token 长期有效，供手机日历订阅。"""
+    if not token:
+        return False
+    with db() as conn:
+        expected = get_setting(conn, "ics_token", "")
+    return bool(expected) and hmac.compare_digest(token, expected)
+
+
 @app.get("/api/ics-url")
 def ics_url(request: Request):
-    """返回带访问令牌的日历订阅链接（仅登录用户可获取）。"""
+    """返回带访问令牌的日历订阅链接（仅登录用户可获取）。
+
+    v1.5.1 起令牌持久化：首次生成后固定不变（settings.ics_token），
+    手机日历 App 订阅一次长期有效，不再 30 天过期。
+    需要作废旧链接时清空该设置即可自动重新生成。
+    """
     require_auth(request)
-    return {"url": f"/api/calendar.ics?token={auth.make_token()}"}
+    with db() as conn:
+        token = get_setting(conn, "ics_token", "")
+        if not token:
+            token = secrets.token_urlsafe(24)
+            set_setting(conn, "ics_token", token)
+    return {"url": f"/api/calendar.ics?token={token}"}
 
 
 @app.get("/api/calendar.ics", response_class=PlainTextResponse)
 def calendar_ics(request: Request, token: str = ""):
-    # 日历 App 不支持 Cookie，需用链接内 token；浏览器内访问走 Cookie
+    # 日历 App 不支持 Cookie，需用链接内 token；浏览器内访问走 Cookie。
+    # v1.5.1：持久化 ics_token（长期有效）与旧版 HMAC 会话 token 双轨兼容
     if auth.auth_enabled() and not (
-        auth.verify_token(token) or auth.verify_token(request.cookies.get(auth.COOKIE_NAME))
+        _valid_ics_token(token)
+        or auth.verify_token(token)
+        or auth.verify_token(request.cookies.get(auth.COOKIE_NAME))
     ):
         raise HTTPException(status_code=401, detail="unauthorized")
     with db() as conn:
