@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import sqlite3
+import threading
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
@@ -14,8 +15,9 @@ from . import auth, billing, rates
 from .currencies import CURRENCIES, CYCLES, PAYMENT_METHODS
 from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
+from . import mailer
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 LOGO_RE = re.compile(r"^sub_\d+_\d+\.(png|jpg|webp)$")
@@ -109,6 +111,16 @@ def _settings_payload(conn: sqlite3.Connection) -> dict:
         "bg_mask": int(get_setting(conn, "bg_mask", "35") or 35),
         "chart_style": get_setting(conn, "chart_style", "bars") or "bars",
         "brand_icon": get_setting(conn, "brand_icon", ""),
+        # ---- v1.4.0 邮箱提醒 ----
+        "notify_enabled": get_setting(conn, "notify_enabled", "0") == "1",
+        "notify_emails": get_setting(conn, "notify_emails", ""),
+        "notify_lead_days": int(get_setting(conn, "notify_lead_days", "3") or 3),
+        "notify_hour": int(get_setting(conn, "notify_hour", "8") or 8),
+        "smtp_host": get_setting(conn, "smtp_host", ""),
+        "smtp_port": int(get_setting(conn, "smtp_port", "465") or 465),
+        "smtp_ssl": get_setting(conn, "smtp_ssl", "1") == "1",
+        "smtp_user": get_setting(conn, "smtp_user", ""),
+        "smtp_pass": get_setting(conn, "smtp_pass", ""),
     }
 
 
@@ -181,7 +193,78 @@ def put_settings(request: Request, body: dict):
             if body["chart_style"] not in ALLOWED_CHARTS:
                 raise HTTPException(status_code=400, detail="不支持的图表类型")
             set_setting(conn, "chart_style", body["chart_style"])
+        # ---- v1.4.0 邮箱提醒 ----
+        if "notify_enabled" in body:
+            set_setting(conn, "notify_enabled", "1" if body["notify_enabled"] else "0")
+        if "notify_emails" in body:
+            emails = ",".join(x.strip() for x in
+                              str(body["notify_emails"]).replace("；", ",").replace("，", ",")
+                              .replace(";", ",").replace(" ", ",").split(",")
+                              if x.strip())
+            if len(emails) > 400 or (emails and any(("@" not in e or len(e) > 100) for e in emails.split(","))):
+                raise HTTPException(status_code=400, detail="收件邮箱格式有误")
+            set_setting(conn, "notify_emails", emails)
+        if "notify_lead_days" in body:
+            n = int(body["notify_lead_days"])
+            if not 1 <= n <= 30:
+                raise HTTPException(status_code=400, detail="提前天数需在 1-30 之间")
+            set_setting(conn, "notify_lead_days", str(n))
+        if "notify_hour" in body:
+            n = int(body["notify_hour"])
+            if not 0 <= n <= 23:
+                raise HTTPException(status_code=400, detail="发送时间需在 0-23 点之间")
+            set_setting(conn, "notify_hour", str(n))
+        if "smtp_host" in body:
+            set_setting(conn, "smtp_host", str(body["smtp_host"]).strip()[:80])
+        if "smtp_port" in body:
+            n = int(body["smtp_port"])
+            if not 1 <= n <= 65535:
+                raise HTTPException(status_code=400, detail="端口不合法")
+            set_setting(conn, "smtp_port", str(n))
+        if "smtp_ssl" in body:
+            set_setting(conn, "smtp_ssl", "1" if body["smtp_ssl"] else "0")
+        if "smtp_user" in body:
+            set_setting(conn, "smtp_user", str(body["smtp_user"]).strip()[:100])
+        if "smtp_pass" in body:
+            set_setting(conn, "smtp_pass", str(body["smtp_pass"])[:100])
         return _settings_payload(conn)
+
+
+@app.post("/api/notify/test")
+def notify_test(request: Request, body: dict):
+    """用请求体携带的 SMTP 配置立即发送一封测试邮件（无需先保存）。
+
+    应用名从服务端设置读取，保证测试邮件与正式提醒邮件的品牌一致。
+    """
+    require_auth(request)
+    with db() as conn:
+        app_name = get_setting(conn, "app_name", "SubDeck") or "SubDeck"
+    emails = str(body.get("notify_emails") or "").strip()
+    if "@" not in emails or not body.get("smtp_host"):
+        raise HTTPException(status_code=400, detail="请先填写 SMTP 服务器与收件邮箱")
+    cfg = {
+        "app_name": app_name,
+        "smtp_host": str(body.get("smtp_host") or "").strip(),
+        "smtp_port": int(body.get("smtp_port") or 465),
+        "smtp_ssl": bool(body.get("smtp_ssl", True)),
+        "smtp_user": str(body.get("smtp_user") or "").strip(),
+        "smtp_pass": str(body.get("smtp_pass") or ""),
+        "emails": emails,
+    }
+    html = mailer.build_html(app_name, [], 0)
+    html = html.replace("共有 <strong>0</strong> 笔订阅到期", "邮件通道正常，配置成功")
+    try:
+        mailer.send_mail(cfg, f"{app_name} · 测试邮件", html)
+        return {"ok": True, "info": "已发送，请查收收件箱（注意垃圾邮件文件夹）"}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"发送失败：{e}")
+
+
+@app.on_event("startup")
+def start_notify_scheduler():
+    """后台线程：每日到点扫描到期订阅并发送提醒邮件（v1.4.0）。"""
+    threading.Thread(target=mailer.scheduler_loop, args=(db, get_setting, set_setting),
+                     daemon=True, name="notify-scheduler").start()
 
 
 @app.get("/api/rates")
@@ -598,7 +681,8 @@ def calendar_ics(request: Request, token: str = ""):
             "FROM subscriptions WHERE active=1").fetchall()
         subs = [billing.ensure_rolled(conn, r) for r in rows]
         base = get_setting(conn, "base_currency", "CNY")
-    ics = generate_ics(subs, base)
+        calname = f"{get_setting(conn, 'app_name', 'SubDeck') or 'SubDeck'} 订阅账单"
+    ics = generate_ics(subs, base, calname=calname)
     return PlainTextResponse(ics, media_type="text/calendar; charset=utf-8")
 
 

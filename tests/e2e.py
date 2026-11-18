@@ -128,6 +128,7 @@ check("列表含折算与到期标签", listapi)
 def ics():
     b, _ = call("GET", "/api/ics-url", cookie=C)
     assert b["url"].startswith("/api/calendar.ics?token="), b
+    holder["ics_url"] = b["url"]
     ics, _ = call("GET", b["url"])
     ics = ics.decode()
     assert "BEGIN:VCALENDAR" in ics and "Netflix" in ics
@@ -147,6 +148,35 @@ def billing_cal():
     assert b["months"] == 24
     b, _ = call("GET", "/api/billing-calendar", expect=401)
 check("扣费日历推算", billing_cal)
+
+def notify_settings():
+    # 合法配置读写
+    b, _ = call("PUT", "/api/settings", {"notify_enabled": True, "notify_emails": "a@qq.com，b@163.com",
+                "notify_lead_days": 5, "notify_hour": 9, "smtp_host": "smtp.qq.com",
+                "smtp_port": 465, "smtp_ssl": True, "smtp_user": "a@qq.com", "smtp_pass": "authcode"}, cookie=C)
+    assert b["notify_enabled"] is True and b["notify_lead_days"] == 5 and b["notify_hour"] == 9
+    assert b["notify_emails"] == "a@qq.com,b@163.com", "中文分号应规范化为逗号"
+    assert b["smtp_port"] == 465 and b["smtp_user"] == "a@qq.com"
+    # 越界拒绝
+    for payload, code in [({"notify_lead_days": 0}, 400), ({"notify_lead_days": 31}, 400),
+                          ({"notify_hour": 24}, 400), ({"smtp_port": 0}, 400),
+                          ({"notify_emails": "no-at-sign"}, 400)]:
+        call("PUT", "/api/settings", payload, cookie=C, expect=code)
+    # 测试邮件：缺配置 400；假 SMTP 地址 502（不真发）
+    call("POST", "/api/notify/test", {"notify_emails": "a@qq.com"}, cookie=C, expect=400)
+    call("POST", "/api/notify/test", {"notify_emails": "a@qq.com", "smtp_host": "127.0.0.1",
+         "smtp_port": 59999, "smtp_ssl": False}, cookie=C, expect=502)
+    # 关闭开关还原
+    call("PUT", "/api/settings", {"notify_enabled": False}, cookie=C)
+check("邮箱提醒设置+测试端点", notify_settings)
+
+def ics_calname():
+    call("PUT", "/api/settings", {"app_name": "订阅管家"}, cookie=C)
+    ics, _ = call("GET", holder["ics_url"])
+    ics = ics.decode()
+    assert "X-WR-CALNAME:订阅管家 订阅账单" in ics, "iCal 日历名应跟随应用名称"
+    call("PUT", "/api/settings", {"app_name": "SubDeck"}, cookie=C)
+check("iCal日历名跟随应用名", ics_calname)
 
 def statics():
     body, _ = call("GET", "/")

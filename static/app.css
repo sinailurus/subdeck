@@ -249,6 +249,18 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .cal-month-total { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .cal-month-total strong { color: var(--text); }
 
+/* ---------- 设置页通用 ---------- */
+.check-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; margin: 6px 0; cursor: pointer;
+}
+.check-row input { width: 16px; height: 16px; accent-color: var(--primary); }
+.form-inline { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.form-row.form-inline { flex-direction: row; align-items: flex-end; }   /* 覆盖 .form-row 的 column（v1.4.0 邮箱提醒面板） */
+.form-inline label { font-size: 13px; }
+.form-inline input[type="number"] { width: 90px; }
+.btn-row { display: flex; gap: 10px; margin-top: 12px; }
+
 /* ---------- 工具栏 ---------- */
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; align-items: center; }
 .search-box {

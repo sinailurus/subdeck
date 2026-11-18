@@ -696,6 +696,17 @@ function renderSettings() {
       : ["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD", "KRW", "SGD"].map((c) => `<option value="${c}">${c}</option>`).join("");
   sel.value = state.settings.base_currency;
   $("#set-remind-days").value = state.settings.remind_days;
+  // 邮箱提醒（v1.4.0）
+  $("#f-notify-enabled").checked = !!state.settings.notify_enabled;
+  $("#f-notify-emails").value = state.settings.notify_emails || "";
+  $("#f-notify-lead").value = state.settings.notify_lead_days;
+  $("#notify-lead-preview").textContent = state.settings.notify_lead_days;
+  $("#f-notify-hour").value = state.settings.notify_hour;
+  $("#f-smtp-host").value = state.settings.smtp_host || "";
+  $("#f-smtp-port").value = state.settings.smtp_port;
+  $("#f-smtp-ssl").checked = !!state.settings.smtp_ssl;
+  $("#f-smtp-user").value = state.settings.smtp_user || "";
+  $("#f-smtp-pass").value = state.settings.smtp_pass || "";
   $("#rates-status").textContent = state.ratesInfo.updated_at
     ? `上次更新：${state.ratesInfo.updated_at}。` : "尚未同步过汇率。";
   api("/api/ics-url").then((r) => { $("#ics-url").value = location.origin + r.url; })
@@ -867,6 +878,48 @@ $("#btn-save-settings").addEventListener("click", async () => {
     toast(t("settingsSaved"));
     await refreshData(); renderAll();
   } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
+});
+
+/* ---------------- 邮箱提醒（v1.4.0） ---------------- */
+$("#btn-save-notify").addEventListener("click", async () => {
+  try {
+    state.settings = await api("/api/settings", { method: "PUT", body: {
+      notify_enabled: $("#f-notify-enabled").checked,
+      notify_emails: $("#f-notify-emails").value,
+      notify_lead_days: Number($("#f-notify-lead").value),
+      notify_hour: Number($("#f-notify-hour").value),
+      smtp_host: $("#f-smtp-host").value,
+      smtp_port: Number($("#f-smtp-port").value),
+      smtp_ssl: $("#f-smtp-ssl").checked,
+      smtp_user: $("#f-smtp-user").value,
+      smtp_pass: $("#f-smtp-pass").value,
+    }});
+    renderSettings();   // 回填服务端规范化后的值
+    toast(state.settings.notify_enabled ? "提醒设置已保存，将按计划自动发送" : "已保存（当前未启用）");
+  } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
+});
+
+$("#btn-test-notify").addEventListener("click", async () => {
+  const r = $("#notify-test-result");
+  r.classList.remove("hidden");
+  r.textContent = "正在发送测试邮件…";
+  try {
+    const res = await api("/api/notify/test", { method: "POST", body: {
+      notify_emails: $("#f-notify-emails").value,
+      smtp_host: $("#f-smtp-host").value,
+      smtp_port: Number($("#f-smtp-port").value),
+      smtp_ssl: $("#f-smtp-ssl").checked,
+      smtp_user: $("#f-smtp-user").value,
+      smtp_pass: $("#f-smtp-pass").value,
+    }});
+    r.textContent = "✓ " + res.info;
+  } catch (err) {
+    if (err.message !== "unauthorized") r.textContent = "✗ " + err.message;
+  }
+});
+
+$("#f-notify-lead").addEventListener("input", () => {
+  $("#notify-lead-preview").textContent = $("#f-notify-lead").value || 3;
 });
 
 $("#btn-copy-ics").addEventListener("click", async () => {

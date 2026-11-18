@@ -11,8 +11,11 @@ def _escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
 
-def generate_ics(subs: list[dict], base_currency: str) -> str:
-    """subs 为已滚动的活跃订阅列表（已含 name/amount/currency/cycle/next_billing_date）。"""
+def generate_ics(subs: list[dict], base_currency: str, calname: str = "SubDeck 订阅账单") -> str:
+    """subs 为已滚动的活跃订阅列表（已含 name/amount/currency/cycle/next_billing_date）。
+
+    calname 跟随设置中的应用名称（v1.4.0 起），日历 App 内显示一致的品牌名。
+    """
     today = datetime.date.today()
     horizon = today.replace(year=today.year + 1)
     lines = [
@@ -21,7 +24,7 @@ def generate_ics(subs: list[dict], base_currency: str) -> str:
         "PRODID:-//SubDeck//Subscription Billing//ZH",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        "X-WR-CALNAME:SubDeck 订阅账单",
+        f"X-WR-CALNAME:{_escape(calname)}",
         "X-WR-TIMEZONE:Asia/Shanghai",
     ]
     for sub in subs:
