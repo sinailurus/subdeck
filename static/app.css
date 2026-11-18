@@ -402,11 +402,12 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .foot-right { display: flex; gap: 8px; }
 
 /* ---------- 设置页 ---------- */
-.settings .panel { max-width: 640px; }
+/* v1.6.2 修复：面板限宽 640 但未居中，平板/手机宽视口（如切电脑 UA 后 ~980px）下贴左、右侧大片空白。margin-inline:auto 全断点统一居中 */
+.settings .panel { max-width: 640px; margin-inline: auto; }
 .ics-row { display: flex; gap: 8px; }
 .ics-row input { font-size: 12.5px; color: var(--muted); flex: 1; min-width: 0; }
 .settings-panel-gap { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
-#view-settings .panel { max-width: 640px; }
+#view-settings .panel { max-width: 640px; margin-inline: auto; }
 #view-settings .btn { max-width: 220px; }
 
 /* ---------- 外观面板控件 ---------- */
