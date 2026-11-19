@@ -1078,9 +1078,11 @@ async function saveAppearance(patch, msg) {
   try {
     state.settings = await api("/api/settings", { method: "PUT", body: patch });
     applyAppearance();
-    if ("chart_style" in patch)
+    if ("chart_style" in patch) {
       document.querySelectorAll("#chart-seg .seg-btn").forEach((b) =>
         b.classList.toggle("active", b.dataset.chart === (state.settings.chart_style || "bars")));
+      renderCategoryChart();   // v1.6.12 修复：切换图表样式后立即重绘（此前仅刷新页面才生效）
+    }
     if ("theme_color" in patch) renderThemeSwatches();
     if (msg) toast(msg);
   } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
