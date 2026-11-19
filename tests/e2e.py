@@ -522,3 +522,89 @@ check("日历订阅路径式token", ics_path_token_flow)
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)
 print("ALL TESTS PASSED")
+
+# ---- v1.6.11 数据备份：导出/导入/回滚 ----
+BK_COOKIE = C
+
+def _bk_zip_bytes(sensitive):
+    payload, _ = call("GET", f"/api/export?sensitive={1 if sensitive else 0}", cookie=BK_COOKIE)
+    return payload if isinstance(payload, bytes) else payload.encode()
+
+def bk_export_content():
+    import io, sqlite3, tempfile, zipfile
+    znosens = zipfile.ZipFile(io.BytesIO(_bk_zip_bytes(False)))
+    zsens = zipfile.ZipFile(io.BytesIO(_bk_zip_bytes(True)))
+    for z in (znosens, zsens):
+        assert "manifest.json" in z.namelist() and "subdeck.db" in z.namelist(), z.namelist()
+    import json as _json
+    assert _json.loads(znosens.read("manifest.json"))["sensitive"] is False
+    assert _json.loads(zsens.read("manifest.json"))["sensitive"] is True
+    with tempfile.TemporaryDirectory() as td:
+        dbp = os.path.join(td, "s.db")
+        open(dbp, "wb").write(znosens.read("subdeck.db"))
+        conn = sqlite3.connect(dbp)
+        n_no = conn.execute("SELECT COUNT(*) FROM settings WHERE key='smtp_pass'").fetchone()[0]
+        open(dbp, "wb").write(zsens.read("subdeck.db"))
+        conn2 = sqlite3.connect(dbp)
+        row = conn2.execute("SELECT value FROM settings WHERE key='smtp_pass'").fetchone()
+        assert n_no == 0, "不含敏感包仍含 smtp_pass"
+        assert row is not None, "含敏感包丢失 smtp_pass"
+        # 两包的 smtp_pass 值 = 当前库里的值（e2e 未配置 SMTP 时可能为空串，结构在即可）
+check("v1.6.11 导出包结构与敏感剔除", bk_export_content)
+
+def bk_unauth():
+    call("GET", "/api/export", expect=401)
+    call("POST", "/api/import", expect=401)
+    call("POST", "/api/import/rollback", expect=401)
+    call("GET", "/api/import-status", expect=401)
+check("v1.6.11 备份端点未登录401", bk_unauth)
+
+def bk_badfile():
+    # 以 multipart 结构上传非 zip 内容 → 服务端 zip 解析失败应 400
+    boundary = "----bke2ebad"
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"bad.zip\"\r\n"
+            f"Content-Type: application/zip\r\n\r\n").encode() + b"not a zip at all" + f"\r\n--{boundary}--\r\n".encode()
+    bad, _ = call("POST", "/api/import", raw=body,
+                  headers={"Content-Type": f"multipart/form-data; boundary={boundary}"}, cookie=BK_COOKIE, expect=400)
+    assert "zip" in bad.get("detail", ""), bad
+check("v1.6.11 坏文件导入400", bk_badfile)
+
+def bk_import_rollback_flow():
+    import io, zipfile
+    # 0) 基线快照：当前订阅列表
+    base, _ = call("GET", "/api/subscriptions", cookie=BK_COOKIE)
+    base_items = base["items"] if isinstance(base, dict) and "items" in base else base
+    # 1) 导出基线包
+    zbytes = _bk_zip_bytes(True)
+    # 2) 破坏现场：新增一条订阅 + 改一个设置
+    d, _ = call("POST", "/api/subscriptions", {"name": "bk-test-temp", "amount": 1, "currency": "CNY",
+                                               "cycle": "monthly", "next_billing_date": "2030-01-01"}, cookie=BK_COOKIE)
+    tid = d["id"]
+    call("PUT", "/api/settings", {"app_name": "dirty-test"}, cookie=BK_COOKIE)
+    # 3) 导入基线包 → 应回到破坏前
+    boundary = "----bke2eboundary"
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"b.zip\"\r\n"
+            f"Content-Type: application/zip\r\n\r\n").encode() + zbytes + f"\r\n--{boundary}--\r\n".encode()
+    imp, _ = call("POST", "/api/import", raw=body,
+                  headers={"Content-Type": f"multipart/form-data; boundary={boundary}"}, cookie=BK_COOKIE)
+    assert imp["ok"] and imp["rollback_available"], imp
+    now, _ = call("GET", "/api/subscriptions", cookie=BK_COOKIE)
+    now_items = now["items"] if isinstance(now, dict) and "items" in now else now
+    assert [s["name"] for s in now_items] == [s["name"] for s in base_items], "导入后订阅与基线不符"
+    st, _ = call("GET", "/api/settings", cookie=BK_COOKIE)
+    assert st["app_name"] != "dirty-test", "导入后设置未被覆盖"
+    # 4) 回滚 → 应回到「破坏后」状态（含临时订阅）
+    rb, _ = call("POST", "/api/import/rollback", cookie=BK_COOKIE)
+    assert rb["ok"] and not rb["rollback_available"], rb
+    after, _ = call("GET", "/api/subscriptions", cookie=BK_COOKIE)
+    after_items = after["items"] if isinstance(after, dict) and "items" in after else after
+    names = [s["name"] for s in after_items]
+    assert "bk-test-temp" in names, "回滚后应恢复破坏后的临时订阅"
+    st2, _ = call("GET", "/api/settings", cookie=BK_COOKIE)
+    assert st2["app_name"] == "dirty-test", "回滚后应恢复破坏后的设置"
+    # 5) 回滚存档已作废：再滚一次应 404
+    call("POST", "/api/import/rollback", cookie=BK_COOKIE, expect=404)
+    # 6) 清理现场：删临时订阅 + 还原设置
+    call("DELETE", f"/api/subscriptions/{tid}", cookie=BK_COOKIE)
+    call("PUT", "/api/settings", {"app_name": "SubDeck"}, cookie=BK_COOKIE)
+check("v1.6.11 导入覆盖+回滚闭环", bk_import_rollback_flow)

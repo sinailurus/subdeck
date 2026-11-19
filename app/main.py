@@ -2,6 +2,7 @@
 """SubDeck —— 自部署订阅管理（FastAPI 后端入口）。"""
 import datetime
 import hmac
+import io
 import json
 import os
 import re
@@ -9,8 +10,10 @@ import secrets
 import shutil
 import sqlite3
 import sys
+import tempfile
 import threading
 import time
+import zipfile
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
@@ -22,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.7"
+APP_VERSION = "1.6.11"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -1045,6 +1048,64 @@ def calendar_ics_path(request: Request, token_ics: str):
     if not token_ics.endswith(".ics"):
         raise HTTPException(status_code=404, detail="not found")
     return _calendar_ics_impl(request, token_ics[:-4])
+
+
+# ---------------------------------------------------------- 数据备份 / 导入 / 回滚（v1.6.11）
+
+@app.get("/api/export")
+def export_backup(request: Request, sensitive: int = 0):
+    """导出备份包 zip。sensitive=1 时保留 SMTP 授权码等敏感设置（默认剔除）。
+
+    无论是否含敏感信息，导出完成提示"妥善保管"由前端负责；
+    secret.key（会话密钥）永不进包。
+    """
+    require_auth(request)
+    from . import backup
+    data = backup.export_bytes(sensitive=bool(sensitive))
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    filename = f"subdeck-backup-{stamp}.zip"
+    return Response(
+        data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.get("/api/import-status")
+def import_status(request: Request):
+    """回滚可用性查询（前端据此显隐"回滚上次导入"按钮）。"""
+    require_auth(request)
+    from . import backup
+    return {"has_rollback": backup.has_rollback()}
+
+
+@app.post("/api/import")
+async def import_backup(request: Request):
+    """覆盖式导入备份包 zip；导入前自动留档，可一键回滚到导入前。"""
+    require_auth(request)
+    from . import backup
+    try:
+        form = await request.form()
+        upload = form.get("file")
+        if upload is None or isinstance(upload, str):
+            raise ValueError("缺少上传文件（字段名 file）")
+        data = await upload.read()
+        if not data:
+            raise ValueError("上传文件为空")
+        return backup.import_zip_bytes(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/import/rollback")
+def rollback_import(request: Request):
+    """一键回滚到最近一次导入前的状态（回滚后存档作废）。"""
+    require_auth(request)
+    from . import backup
+    try:
+        return backup.rollback()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # ---------------------------------------------------------------- 静态资源

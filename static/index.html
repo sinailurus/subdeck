@@ -9,7 +9,7 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
 <title>SubDeck · 订阅管理</title>
-<link rel="stylesheet" href="/assets/app.css?v=1.6.10">
+<link rel="stylesheet" href="/assets/app.css?v=1.6.11">
 </head>
 <body>
 
@@ -159,6 +159,7 @@
         <a href="#sett-mail">邮箱提醒</a>
         <a href="#sett-rates">汇率数据</a>
         <a href="#sett-calendar">日历订阅</a>
+        <a href="#sett-backup">数据备份</a>
         <a href="#sett-account">账号</a>
         <a href="#sett-about">关于</a>
       </nav>
@@ -367,6 +368,17 @@
         <div class="ics-row"><input id="ics-url" readonly><button id="btn-copy-ics" class="btn">复制</button></div>
         <p class="muted small">点击上方输入框会自动全选完整链接；推荐直接点「复制」按钮，再把完整链接粘贴到支持订阅的日历 App 中。若日历 App 不支持 URL 订阅或导入失败，可在浏览器打开链接下载 .ics 文件，再通过日历的「导入」功能一次性导入。链接长期有效，含访问令牌，请勿公开分享。</p>
       </div>
+      <div class="panel" id="sett-backup">
+        <h2>数据备份</h2>
+        <p class="muted small">导出订阅与全部设置的备份包，或从备份包还原。导入为覆盖式：导入前自动留档，可一键回滚到导入前。</p>
+        <div class="btn-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;">
+          <button id="btn-export" class="btn">导出备份包</button>
+          <button id="btn-import" class="btn">导入备份包</button>
+          <button id="btn-rollback" class="btn ghost hidden">回滚上次导入</button>
+        </div>
+        <input type="file" id="import-file" accept=".zip,application/zip" class="hidden">
+        <p id="backup-note" class="muted small" style="margin-top:8px;"></p>
+      </div>
       <div class="panel" id="sett-account">
         <h2>账号</h2>
         <button id="btn-logout" class="btn danger hidden">退出登录</button>
@@ -402,7 +414,21 @@
   </nav>
 </div>
 
-<!-- 添加/编辑弹窗 -->
+<!-- 导出备份包选项弹窗（v1.6.11）：敏感信息勾选 -->
+<div id="export-mask" class="modal-mask hidden">
+  <div class="modal" style="max-width:400px;">
+    <h2>导出备份包</h2>
+    <p class="muted small" style="margin:10px 0 4px;">备份包含全部订阅、设置与图片。是否包含敏感信息（如邮箱提醒的 SMTP 授权码）？包含后在新环境导入即可直接使用，无需重新配置。</p>
+    <label style="display:flex; align-items:center; gap:8px; margin:12px 0; cursor:pointer;">
+      <input type="checkbox" id="export-sensitive"> 包含敏感信息（SMTP 授权码等）
+    </label>
+    <div class="modal-foot">
+      <button type="button" id="btn-export-cancel" class="btn ghost">取消</button>
+      <button type="button" id="btn-export-go" class="btn">导出</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-mask" class="modal-mask hidden">
   <form id="sub-form" class="modal" novalidate>
     <h2 id="modal-title">添加订阅</h2>
@@ -494,6 +520,6 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
-<script src="/assets/app.js?v=1.6.10"></script>
+<script src="/assets/app.js?v=1.6.11"></script>
 </body>
 </html>

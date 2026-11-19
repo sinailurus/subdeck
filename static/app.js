@@ -1276,6 +1276,80 @@ boot().catch((err) => {
   if (err.message !== "unauthorized") toast("加载失败：" + err.message);
 });
 
+/* ---------- 数据备份：导出 / 导入 / 回滚（v1.6.11） ---------- */
+(function () {
+  const mask = document.getElementById("export-mask");
+  const btnExport = document.getElementById("btn-export");
+  if (!btnExport || !mask) return;
+  const btnRollback = document.getElementById("btn-rollback");
+  const note = document.getElementById("backup-note");
+
+  // 回滚按钮显隐：有存档才显示
+  api("/api/import-status").then((r) => {
+    if (r.has_rollback) btnRollback.classList.remove("hidden");
+  }).catch(() => {});
+
+  /* 导出：弹选项 → 下载 → 按是否含敏感给出对应提醒 */
+  btnExport.addEventListener("click", () => mask.classList.remove("hidden"));
+  document.getElementById("btn-export-cancel").addEventListener("click", () => mask.classList.add("hidden"));
+  mask.addEventListener("click", (e) => { if (e.target === mask) mask.classList.add("hidden"); });
+  document.getElementById("btn-export-go").addEventListener("click", async () => {
+    const sensitive = document.getElementById("export-sensitive").checked ? 1 : 0;
+    mask.classList.add("hidden");
+    try {
+      const resp = await fetch(`/api/export?sensitive=${sensitive}`, { credentials: "same-origin" });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const blob = await resp.blob();
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `subdeck-backup-${stamp}.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast(sensitive
+        ? "导出成功：文件含授权码等隐私敏感信息，请妥善保管"
+        : "导出成功：已剔除敏感信息");
+    } catch { toast("导出失败，请重试"); }
+  });
+
+  /* 导入：选文件 → 确认覆盖 → 上传 → 全量刷新 */
+  const fileInput = document.getElementById("import-file");
+  document.getElementById("btn-import").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    fileInput.value = "";
+    if (!file) return;
+    if (!confirm("导入将覆盖当前全部订阅与设置（图片以备份包为准）。\n导入前会自动留档，可一键回滚到导入前。\n\n确定导入 " + file.name + " ？")) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const r = await fetch("/api/import", { method: "POST", body: fd, credentials: "same-origin" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || "HTTP " + r.status);
+      toast(j.sensitive
+        ? "导入成功（备份包含敏感信息）"
+        : "导入成功（备份包不含敏感信息，相关设置保留本地现状）");
+      await refreshData(); renderAll();
+      btnRollback.classList.remove("hidden");
+      note.textContent = "上次导入：" + (j.exported_at || "").slice(0, 10) + " 的备份包 · 订阅 " + j.subscriptions + " 条 · 图片 " + j.assets + " 张";
+    } catch (e) { toast("导入失败：" + e.message); }
+  });
+
+  /* 回滚：恢复到最近一次导入前 */
+  btnRollback.addEventListener("click", async () => {
+    if (!confirm("回滚将恢复到最近一次导入前的状态（回滚后存档作废）。确定？")) return;
+    try {
+      const r = await fetch("/api/import/rollback", { method: "POST", credentials: "same-origin" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || "HTTP " + r.status);
+      toast("已回滚到导入前");
+      await refreshData(); renderAll();
+      btnRollback.classList.add("hidden");
+      note.textContent = "";
+    } catch (e) { toast("回滚失败：" + e.message); }
+  });
+})();
+
 /* ---------- 设置页左导航：点击平滑滚动 + 滚动高亮联动（v1.6.9，仅 ≥1024 显示） ---------- */
 (function () {
   const nav = document.getElementById("settings-nav");
