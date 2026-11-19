@@ -22,7 +22,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.3"
+APP_VERSION = "1.6.4"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -233,6 +233,7 @@ def get_settings(request: Request):
 
 
 @app.put("/api/settings")
+@app.post("/api/settings")   # v1.6.4：兼容 POST 动词（此前 405，部分客户端脚本按 POST 习惯调用）
 def put_settings(request: Request, body: dict):
     require_auth(request)
     with db() as conn:
@@ -609,6 +610,7 @@ def create_sub(request: Request, body: dict):
 
 
 @app.put("/api/subscriptions/{sub_id}")
+@app.patch("/api/subscriptions/{sub_id}")   # v1.6.4：REST 惯例 PATCH 别名，与 PUT 等价（partial 更新）
 def update_sub(request: Request, sub_id: int, body: dict):
     require_auth(request)
     data = _validate(body, partial=True)

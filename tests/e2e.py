@@ -468,6 +468,24 @@ def pause_resume_flow():
     call("DELETE", f"/api/subscriptions/{b2['id']}", cookie=C)
 check("订阅暂停/恢复全链路", pause_resume_flow)
 
+# ---- v1.6.4 API 动词兼容（朋友测试反馈的两点） ----
+def api_verbs_flow():
+    """PATCH 订阅生效；POST settings 生效（此前 405）。"""
+    b, _ = call("POST", "/api/subscriptions", {"name": "动词测试", "amount": 9, "currency": "CNY",
+        "cycle": "monthly", "next_billing_date": "2026-12-08"}, cookie=C)
+    # PATCH 部分更新（call 内部断言 200，非 200 会直接抛错）
+    call("PATCH", f"/api/subscriptions/{b['id']}", {"amount": 10}, cookie=C)
+    subs, _ = call("GET", "/api/subscriptions", cookie=C)
+    assert next(x for x in subs if x["id"] == b["id"])["amount"] == 10
+    call("DELETE", f"/api/subscriptions/{b['id']}", cookie=C)
+    # POST settings 与 PUT 等价
+    old, _ = call("GET", "/api/settings", cookie=C)
+    call("POST", "/api/settings", {"remind_days": 3}, cookie=C)
+    now, _ = call("GET", "/api/settings", cookie=C)
+    assert now["remind_days"] == 3, now
+    call("PUT", "/api/settings", {"remind_days": old["remind_days"]}, cookie=C)
+check("API动词兼容 PATCH/POST settings", api_verbs_flow)
+
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)
 print("ALL TESTS PASSED")
