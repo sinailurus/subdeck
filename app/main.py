@@ -16,7 +16,7 @@ import time
 import zipfile
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import auth, billing, rates
@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.12"
+APP_VERSION = "1.6.13"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -1138,4 +1138,10 @@ app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    # v1.6.13 修复：静态资源版本戳自动跟随 APP_VERSION（此前 ?v= 写死在 HTML 里，
+    # 发版只改 app.js 时 URL 不变，浏览器命中旧缓存导致更新"不生效"）
+    html = (os.path.join(STATIC_DIR, "index.html"))
+    with open(html, encoding="utf-8") as f:
+        content = f.read()
+    content = re.sub(r"\?v=[\w.]+", f"?v={APP_VERSION}", content)
+    return HTMLResponse(content, headers={"Cache-Control": "no-cache"})
