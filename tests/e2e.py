@@ -127,7 +127,8 @@ check("列表含折算与到期标签", listapi)
 
 def ics():
     b, _ = call("GET", "/api/ics-url", cookie=C)
-    assert b["url"].startswith("/api/calendar.ics?token="), b
+    # v1.6.5：路径式 token（小米日历等对 query 兼容差），旧 query 式仍兼容
+    assert b["url"].startswith("/api/calendar/") and b["url"].endswith(".ics"), b
     holder["ics_url"] = b["url"]
     ics, _ = call("GET", b["url"])
     ics = ics.decode()
@@ -485,6 +486,25 @@ def api_verbs_flow():
     assert now["remind_days"] == 3, now
     call("PUT", "/api/settings", {"remind_days": old["remind_days"]}, cookie=C)
 check("API动词兼容 PATCH/POST settings", api_verbs_flow)
+
+# ---- v1.6.5 日历订阅路径式 token（小米日历等对 query 兼容差） ----
+def ics_path_token_flow():
+    """ics-url 返回路径式链接；路径式与 query 式均能免登录拉取；错 token 401。"""
+    d, _ = call("GET", "/api/ics-url", cookie=C)
+    url = d["url"]
+    assert url.startswith("/api/calendar/") and url.endswith(".ics") and "?" not in url, url
+    # 路径式：无 cookie 直接拉（模拟日历 App）
+    ics, _ = call("GET", url)
+    ics = ics.decode("utf-8") if isinstance(ics, bytes) else ics
+    assert ics.startswith("BEGIN:VCALENDAR") and "BEGIN:VEVENT" in ics, ics[:100]
+    # 旧 query 式仍兼容
+    tok = url.split("/api/calendar/")[1][:-4]
+    ics2, _ = call("GET", f"/api/calendar.ics?token={tok}")
+    ics2 = ics2.decode("utf-8") if isinstance(ics2, bytes) else ics2
+    assert ics2 == ics, "query式与路径式内容不一致"
+    # 错 token 401（e2e 环境固定开启认证）
+    call("GET", "/api/calendar/badtoken.ics", expect=401)
+check("日历订阅路径式token", ics_path_token_flow)
 
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)

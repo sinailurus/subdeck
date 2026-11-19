@@ -22,7 +22,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.4"
+APP_VERSION = "1.6.5"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -979,6 +979,8 @@ def ics_url(request: Request):
     v1.5.1 起令牌持久化：首次生成后固定不变（settings.ics_token），
     手机日历 App 订阅一次长期有效，不再 30 天过期。
     需要作废旧链接时清空该设置即可自动重新生成。
+    v1.6.5：改为路径式 token（/api/calendar/{token}.ics）——部分日历客户端
+    （如小米日历）对 URL query 参数支持不佳，路径式兼容性更好。
     """
     require_auth(request)
     with db() as conn:
@@ -986,11 +988,10 @@ def ics_url(request: Request):
         if not token:
             token = secrets.token_urlsafe(24)
             set_setting(conn, "ics_token", token)
-    return {"url": f"/api/calendar.ics?token={token}"}
+    return {"url": f"/api/calendar/{token}.ics"}
 
 
-@app.get("/api/calendar.ics", response_class=PlainTextResponse)
-def calendar_ics(request: Request, token: str = ""):
+def _calendar_ics_impl(request: Request, token: str):
     # 日历 App 不支持 Cookie，需用链接内 token；浏览器内访问走 Cookie。
     # v1.5.1：持久化 ics_token（长期有效）与旧版 HMAC 会话 token 双轨兼容
     if auth.auth_enabled() and not (
@@ -1008,6 +1009,20 @@ def calendar_ics(request: Request, token: str = ""):
         calname = f"{get_setting(conn, 'app_name', 'SubDeck') or 'SubDeck'} 订阅账单"
     ics = generate_ics(subs, base, calname=calname)
     return PlainTextResponse(ics, media_type="text/calendar; charset=utf-8")
+
+
+@app.get("/api/calendar.ics", response_class=PlainTextResponse)
+def calendar_ics(request: Request, token: str = ""):
+    # 旧版 query 式订阅链接（v1.5.1–1.6.4），保留兼容已订阅用户
+    return _calendar_ics_impl(request, token)
+
+
+@app.get("/api/calendar/{token_ics}", response_class=PlainTextResponse)
+def calendar_ics_path(request: Request, token_ics: str):
+    # v1.6.5 路径式订阅链接：token 以 {token}.ics 形式出现在路径中
+    if not token_ics.endswith(".ics"):
+        raise HTTPException(status_code=404, detail="not found")
+    return _calendar_ics_impl(request, token_ics[:-4])
 
 
 # ---------------------------------------------------------------- 静态资源
