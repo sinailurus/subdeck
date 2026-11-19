@@ -3,13 +3,14 @@
 # 产物：dist/SubDeck（单文件，控制台窗口版）
 # CI 中由 .github/workflows/docker-publish.yml 调用：
 #   - build-windows（windows-latest → SubDeck.exe）
-#   - build-macos（macos-13 Intel / macos-14 Apple Silicon → SubDeck）
-# icon 仅 Windows 使用；macOS 端 PyInstaller 会忽略 EXE 的 icon 参数，
-# 但为避免歧义显式传 None。
+#   - build-macos（macos-15-intel Intel / macos-15 Apple Silicon → SubDeck）
+# icon：Windows 用 ico；macOS 用 icns（Dock 图标）。
 
 import sys
 
-EXE_ICON = 'packaging/subdeck.ico' if sys.platform == 'win32' else None
+# v1.6.0 起：Windows 用 ico；v1.6.4 起 macOS 用 icns（Dock 图标）
+EXE_ICON = ('packaging/subdeck.ico' if sys.platform == 'win32'
+            else 'packaging/subdeck.icns' if sys.platform == 'darwin' else None)
 
 a = Analysis(
     ['run_exe.py'],
