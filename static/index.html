@@ -9,7 +9,7 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
 <title>SubDeck · 订阅管理</title>
-<link rel="stylesheet" href="/assets/app.css?v=1.6.8">
+<link rel="stylesheet" href="/assets/app.css?v=1.6.9">
 </head>
 <body>
 
@@ -150,7 +150,20 @@
 
     <!-- 设置 -->
     <section id="view-settings" class="view hidden">
-      <div class="panel">
+            <nav class="settings-nav" id="settings-nav" aria-label="设置分类导航">
+        <a href="#sett-appearance">外观</a>
+        <a href="#sett-login">登录页</a>
+        <a href="#sett-categories">分类管理</a>
+        <a href="#sett-basic">基本设置</a>
+        <a href="#panel-custom-rates">手动汇率</a>
+        <a href="#sett-mail">邮箱提醒</a>
+        <a href="#sett-rates">汇率数据</a>
+        <a href="#sett-calendar">日历订阅</a>
+        <a href="#sett-account">账号</a>
+        <a href="#sett-about">关于</a>
+      </nav>
+      <div class="settings-panels">
+<div class="panel" id="sett-appearance">
         <h2>外观</h2>
         <p class="muted small">所有外观设置保存到服务端，手机 / 电脑 / 平板访问时自动同步，无需逐台设置。</p>
         <div class="form-row">
@@ -220,7 +233,7 @@
           </div>
         </div>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-login">
         <h2>登录页</h2>
         <p class="muted small">登录页独立于主应用外观：标题、欢迎语与背景在此单独设置，保存后退出登录即可查看效果。<strong>背景图与欢迎语登录前公开可见，请勿使用含隐私内容的图片。</strong>浏览器标签标题仍跟随应用名。</p>
         <div class="form-row">
@@ -272,7 +285,7 @@
         </div>
         <button id="btn-save-login" class="btn primary">保存登录页设置</button>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-categories">
         <h2>分类管理</h2>
         <p class="muted small">为订阅表单的分类候选添加自定义条目（每个 ≤12 字，最多 20 个）。内置分类不可删除；删除自定义分类不影响已有订阅，其分类照常显示。</p>
         <div class="chips" id="cat-chips"></div>
@@ -281,7 +294,7 @@
           <button type="button" id="btn-add-cat" class="btn primary">添加</button>
         </div>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-basic">
         <h2>基本设置</h2>
         <div class="form-row">
           <label>基准币种（统计折算用）</label>
@@ -306,7 +319,7 @@
         </div>
         <p class="muted small" style="margin-top:10px;border-left:3px solid var(--accent,#49B3FC);padding-left:8px;">更改基准币种时，手动汇率会自动清空并提示重新填写，避免用旧汇率算错账。</p>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-mail">
         <h2>邮箱提醒</h2>
         <p class="muted small">每天到设定时间自动检查未来 <strong id="notify-lead-preview">3</strong> 天内到期的订阅，汇总成一封邮件发送；同一账单日只提醒一次。国内邮箱（QQ / 163 等）请使用「授权码」而非登录密码——QQ 邮箱在网页版「设置 → 账户」开启 SMTP 服务后获取。</p>
         <label class="check-row"><input type="checkbox" id="f-notify-enabled"> 启用邮箱提醒</label>
@@ -343,27 +356,28 @@
         </div>
         <p id="notify-test-result" class="muted small hidden"></p>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-rates">
         <h2>汇率数据</h2>
         <p class="muted small">数据来源：欧洲央行参考汇率（主源 frankfurter.dev，失败自动切换备用源，均免费）。<span id="rates-status"></span></p>
         <button id="btn-refresh-rates" class="btn">立即刷新汇率</button>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-calendar">
         <h2>日历订阅</h2>
         <p class="muted small">把下面的链接添加到手机/电脑的日历 App（如系统日历 → 添加订阅日历），扣费日会自动出现在日历里。</p>
         <div class="ics-row"><input id="ics-url" readonly><button id="btn-copy-ics" class="btn">复制</button></div>
         <p class="muted small">点击上方输入框会自动全选完整链接；推荐直接点「复制」按钮，再把完整链接粘贴到支持订阅的日历 App 中。若日历 App 不支持 URL 订阅或导入失败，可在浏览器打开链接下载 .ics 文件，再通过日历的「导入」功能一次性导入。链接长期有效，含访问令牌，请勿公开分享。</p>
       </div>
-      <div class="panel">
+      <div class="panel" id="sett-account">
         <h2>账号</h2>
         <button id="btn-logout" class="btn danger hidden">退出登录</button>
         <p id="auth-note" class="muted small"></p>
       </div>
-      <div class="panel about">
+      <div class="panel about" id="sett-about">
         <h2>关于</h2>
         <p class="muted small">SubDeck <span id="about-version"></span> · PolyForm NC 1.0.0<br>
         本项目由 Vibe Coding 方式辅助开发，版权与最终决定权归仓库所有者。</p>
       </div>
+          </div>
     </section>
   </main>
 
@@ -480,6 +494,6 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
-<script src="/assets/app.js?v=1.6.8"></script>
+<script src="/assets/app.js?v=1.6.9"></script>
 </body>
 </html>

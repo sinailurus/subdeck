@@ -1275,3 +1275,53 @@ $("#btn-logout").addEventListener("click", async () => {
 boot().catch((err) => {
   if (err.message !== "unauthorized") toast("加载失败：" + err.message);
 });
+
+/* ---------- 设置页左导航：点击平滑滚动 + 滚动高亮联动（v1.6.9，仅 ≥1024 显示） ---------- */
+(function () {
+  const nav = document.getElementById("settings-nav");
+  if (!nav) return;
+  // 点击：拦截默认跳转，平滑滚动 + 不污染浏览器历史
+  nav.addEventListener("click", (e) => {
+    const a = e.target.closest("a[href^='#']");
+    if (!a) return;
+    const target = document.getElementById(a.getAttribute("href").slice(1));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    history.replaceState(null, "", a.getAttribute("href"));
+  });
+  // scrollspy：以视口 15% 高度线为参考，压在哪张卡片上就高亮哪项（rAF 节流，确定性取位无竞态）
+  const links = [...nav.querySelectorAll("a")];
+  const targets = links
+    .map((a) => ({ a, el: document.getElementById(a.getAttribute("href").slice(1)) }))
+    .filter((x) => x.el);
+  let ticking = false;
+  function spy() {
+    ticking = false;
+    let cur = null;
+    // 已滚动到页面底部：强制高亮最后一项（否则末尾卡片永远到不了参考线）
+    const doc = document.documentElement;
+    if (scrollY + innerHeight >= doc.scrollHeight - 4 && targets.length) {
+      cur = targets[targets.length - 1].a;
+    } else {
+      const line = window.innerHeight * 0.15;
+      for (const { a, el } of targets) {
+        if (el.style.display === "none") continue;
+        if (el.getBoundingClientRect().top <= line) cur = a;
+      }
+    }
+    links.forEach((a) => a.classList.toggle("on", a === cur));
+  }
+  window.addEventListener("scroll", () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(spy); }
+  }, { passive: true });
+  spy();
+  // 「手动汇率」面板按需显示/隐藏时，导航项同步显隐
+  const mr = document.getElementById("panel-custom-rates");
+  const mrLink = targets.find((x) => x.el.id === "panel-custom-rates")?.a;
+  if (mr && mrLink) {
+    const sync = () => { mrLink.style.display = mr.style.display === "none" ? "none" : ""; };
+    sync();
+    new MutationObserver(sync).observe(mr, { attributes: true, attributeFilter: ["style"] });
+  }
+})();

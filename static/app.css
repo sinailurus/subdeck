@@ -677,3 +677,33 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 .fx-item.fx-total-row .fx-amount, .fx-item.fx-total-row .fx-name { color: var(--accent); }
 .fx-note { padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
 .fx-badge { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 999px; padding: 1px 8px; }
+
+/* ---------- 设置页三档布局（v1.6.9）：手机不变 / 平板竖屏单列舒展 / ≥1024 左导航+右内容 ---------- */
+.settings-nav { display: none; }   /* 手机默认无导航，卡片流照旧 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* 平板竖屏 / 手机电脑UA(980)：单列居中，面板 640→760 */
+  #view-settings .panel { max-width: 760px; }
+}
+@media (min-width: 1024px) {
+  /* 平板横屏 / PC：左导航 + 右内容（C 布局） */
+  #view-settings {
+    display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 26px;
+    align-items: start; max-width: 1160px; margin-inline: auto;
+  }
+  .settings-nav {
+    display: block; position: sticky; top: 84px; font-size: 13.5px;
+  }
+  .settings-nav a {
+    display: block; padding: 7px 12px; margin: 2px 0;
+    color: var(--muted); text-decoration: none;
+    border-left: 2px solid var(--line); border-radius: 0 8px 8px 0;
+    transition: color .15s, background .15s;
+  }
+  .settings-nav a:hover { color: var(--text); background: var(--card); }
+  .settings-nav a.on {
+    color: var(--primary); border-left-color: var(--primary);
+    background: var(--primary-weak); font-weight: 600;
+  }
+  .settings-panels { display: flex; flex-direction: column; gap: 14px; align-items: center; min-width: 0; }
+  #view-settings .panel { max-width: 880px; width: 100%; }
+}
