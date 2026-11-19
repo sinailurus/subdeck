@@ -22,7 +22,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.5"
+APP_VERSION = "1.6.6"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -1008,7 +1008,11 @@ def _calendar_ics_impl(request: Request, token: str):
         base = get_setting(conn, "base_currency", "CNY")
         calname = f"{get_setting(conn, 'app_name', 'SubDeck') or 'SubDeck'} 订阅账单"
     ics = generate_ics(subs, base, calname=calname)
-    return PlainTextResponse(ics, media_type="text/calendar; charset=utf-8")
+    # v1.6.6：声明标准文件名（路径式 URL 的 token 长文件名不利于日历 App 识别），
+    # attachment 对订阅式客户端无影响（只影响浏览器下载命名）
+    return PlainTextResponse(
+        ics, media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="subdeck.ics"'})
 
 
 @app.get("/api/calendar.ics", response_class=PlainTextResponse)

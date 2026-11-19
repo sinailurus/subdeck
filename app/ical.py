@@ -31,7 +31,9 @@ def generate_ics(subs: list[dict], base_currency: str, calname: str = "SubDeck �
         d = datetime.date.fromisoformat(sub["next_billing_date"])
         while d < horizon:
             amount = f"{sub['amount']:g}".rstrip("0").rstrip(".") or "0"
-            summary = f"🔁 {_escape(sub['name'])} {amount} {sub['currency']}"
+            # v1.6.6：SUMMARY 去除 emoji——部分日历客户端（如小米日历）解析
+            # 4 字节 UTF-8 字符（emoji）崩溃导致导入失败；中文名（3 字节）不受影响
+            summary = f"{_escape(sub['name'])} {amount} {sub['currency']}"
             lines += [
                 "BEGIN:VEVENT",
                 f"UID:subdeck-{sub['id']}-{d.strftime(ICAL_DT_FMT)}@subdeck.local",
