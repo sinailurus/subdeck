@@ -22,7 +22,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.6"
+APP_VERSION = "1.6.7"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -181,6 +181,8 @@ def _settings_payload(conn: sqlite3.Connection) -> dict:
         "notify_emails": get_setting(conn, "notify_emails", ""),
         "notify_lead_days": int(get_setting(conn, "notify_lead_days", "3") or 3),
         "notify_hour": int(get_setting(conn, "notify_hour", "8") or 8),
+        # v1.6.7 外币汇总条：汇率快照日期（自动拉取时间；手动汇率不更新此值）
+        "rates_updated_at": get_setting(conn, "rates_updated_at", ""),
         "smtp_host": get_setting(conn, "smtp_host", ""),
         "smtp_port": int(get_setting(conn, "smtp_port", "465") or 465),
         "smtp_ssl": get_setting(conn, "smtp_ssl", "1") == "1",
@@ -948,6 +950,15 @@ def stats(request: Request):
         categories = sorted(
             [{"category": k, "monthly": v} for k, v in by_category.items()],
             key=lambda x: -x["monthly"])
+        # v1.6.7 外币订阅月均汇总条：与 monthly_total 同口径（全量活跃、monthly_cost 求和）
+        fx_items = [{"id": s["id"], "name": s["name"], "cycle": s["cycle"],
+                     "amount": s["amount"], "currency": s["currency"],
+                     "monthly_cost": s["monthly_cost"]}
+                    for s in subs
+                    if s["currency"] != base and s["monthly_cost"] is not None]
+        fx_missing = [s for s in subs
+                      if s["currency"] != base and s["monthly_cost"] is None]
+        fx_total = round(sum(i["monthly_cost"] for i in fx_items), 2)
         return {
             "base_currency": base,
             "monthly_total": round(monthly_total, 2),
@@ -958,6 +969,13 @@ def stats(request: Request):
             "by_category": categories,
             "pending": pending,
             "upcoming": upcoming,
+            "fx_summary": {
+                "count": len(fx_items),
+                "total_monthly": fx_total,
+                "missing_count": len(fx_missing),
+                "missing_currencies": sorted({s["currency"] for s in fx_missing}),
+                "items": fx_items,
+            },
         }
 
 

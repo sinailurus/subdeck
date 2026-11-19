@@ -117,6 +117,19 @@ def stats():
     assert b["active_count"] == 2, b
 check("统计字段完整", stats)
 
+# ---- v1.6.7 外币订阅月均汇总（stats.fx_summary） ----
+def stats_fx_summary():
+    """fx_summary 口径与 monthly_total 自洽：仅外币、月均求和 ≤ 月均总额；缺汇率进 missing。"""
+    b, _ = call("GET", "/api/stats", cookie=C)
+    fx = b["fx_summary"]
+    assert fx["count"] == len(fx["items"]) >= 1, fx      # 已建订阅含 USD 外币
+    assert all(i["currency"] != b["base_currency"] for i in fx["items"]), fx
+    total = round(sum(i["monthly_cost"] for i in fx["items"]), 2)
+    assert fx["total_monthly"] == total, (fx["total_monthly"], total)
+    assert 0 < fx["total_monthly"] <= b["monthly_total"], fx
+    assert fx["missing_count"] == 0, fx                   # 正常汇率下无缺漏
+check("外币月均汇总fx_summary", stats_fx_summary)
+
 def listapi():
     b, _ = call("GET", "/api/subscriptions", cookie=C)
     assert isinstance(b, list) and len(b) == 2, b

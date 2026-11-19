@@ -646,3 +646,30 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 .row-paused { opacity: .55; }
 .paused-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; margin-left: 2px; white-space: nowrap; vertical-align: middle; }
 .due-badge.paused { background: color-mix(in srgb, var(--muted) 14%, transparent); color: var(--muted); border-color: var(--line); }
+
+/* ---------------- 外币订阅月均汇总条（v1.6.7） ---------------- */
+/* 只用主题变量，6 态皮肤 × 深浅自动适配；与概览统计同口径（monthly_cost 求和） */
+.fx-summary { margin-bottom: 14px; }
+.fx-bar {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--card, #fff));
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 12px; padding: 11px 14px; cursor: pointer; min-width: 0;
+  color: var(--text); font: inherit; text-align: left;
+}
+.fx-bar:active { opacity: .8; }
+.fx-left { font-size: 14px; color: var(--muted); min-width: 0; }
+.fx-left b { color: var(--accent); font-weight: 600; }
+.fx-meta { font-size: 12px; color: var(--muted); white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+.fx-arrow { display: inline-block; transition: transform .15s; }
+.fx-bar[data-open="1"] .fx-arrow { transform: rotate(180deg); }
+.fx-detail { margin-top: 8px; background: var(--card, #fff); border: 1px solid var(--line); border-radius: 10px; padding: 4px 0; }
+.fx-item { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; min-width: 0; }
+.fx-item:last-child { border-bottom: none; }
+.fx-item .fx-name { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-item .fx-sub { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.fx-item .fx-amount { color: var(--text); white-space: nowrap; }
+.fx-item.fx-total-row { background: color-mix(in srgb, var(--accent) 6%, transparent); font-weight: 600; border-radius: 0 0 10px 10px; }
+.fx-item.fx-total-row .fx-amount, .fx-item.fx-total-row .fx-name { color: var(--accent); }
+.fx-note { padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.fx-badge { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 999px; padding: 1px 8px; }

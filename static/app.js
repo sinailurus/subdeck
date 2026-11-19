@@ -531,6 +531,7 @@ async function reloadSubs() {
 function renderSubs() {
   const base = state.settings.base_currency;
   let subs = state.subs;
+  renderFxSummary();   // v1.6.7：外币月均汇总条（数据源 stats，口径与统计卡一致）
   if (state.sort === "asc" || state.sort === "desc") {
     const val = (s) => (s.amount_converted ?? s.amount ?? 0);   // 按折算后金额比较，跨币种才有意义
     subs = [...subs].sort((a, b) => state.sort === "asc" ? val(a) - val(b) : val(b) - val(a));
@@ -543,7 +544,7 @@ function renderSubs() {
         ${s.category ? `<div class="cat-tag">${esc(catLabel(s.category))}</div>` : ""}</div></div></td>
       <td class="ta-r amount-cell">${fmtMoney(s.amount, s.currency)}
         ${s.currency !== base && s.amount_converted != null
-          ? `<small>≈ ${fmtMoney(s.amount_converted, base)}</small>` : ""}</td>
+          ? `<small class="fx-badge" style="font-size:12px">≈ ${fmtMoney(s.amount_converted, base)}</small>` : ""}</td>
       <td>${CYCLE_LABEL[s.cycle]}</td>
       <td>${s.active
         ? `<span class="due-badge ${dueClass(s.days_until)}">${fmtDate(s.next_billing_date)} · ${dueLabel(s.days_until)}</span>`
@@ -569,7 +570,7 @@ function renderSubs() {
         <div class="meta">
           <span>${CYCLE_LABEL[s.cycle]}</span>
           ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
-          ${s.currency !== base && s.amount_converted != null ? `<span>≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
+          ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
         </div>
         <div class="card-actions">
           <button class="icon-btn" data-act="edit" data-id="${s.id}"><svg viewBox="0 0 24 24" width="15" height="15"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
@@ -589,6 +590,42 @@ function renderSubs() {
     </div>`).join("")
     : `<div class="panel"><div class="pending-empty">${t("noSubs")}</div></div>`;
 }
+
+// ---- 外币订阅月均汇总条（v1.6.7） ----
+// 数据源 stats.fx_summary：全量活跃订阅、monthly_cost 求和——与概览「月均支出」同一口径，两处数字可对账
+function renderFxSummary() {
+  const box = $("#fx-summary"), bar = $("#fx-bar"), detail = $("#fx-detail");
+  const base = state.settings.base_currency;
+  const fx = state.stats && state.stats.fx_summary;
+  if (!fx || (!fx.count && !fx.missing_count)) {   // 无外币订阅：整条隐藏，不占地方
+    box.classList.add("hidden");
+    return;
+  }
+  box.classList.remove("hidden");
+  $(".fx-count").textContent = fx.count;
+  $(".fx-total").textContent = `≈ ${fmtMoney(fx.total_monthly, base)}/月`;
+  const up = state.settings.rates_updated_at || "";
+  $(".fx-date").textContent = up ? `按汇率快照 ${up.slice(5, 10)}` : "按当前汇率";
+  const open = localStorage.getItem("subdeck-fx-open") === "1";
+  bar.dataset.open = open ? "1" : "0";
+  detail.classList.toggle("hidden", !open);
+  const note = fx.missing_count
+    ? `<div class="fx-note">另有 ${fx.missing_count} 笔外币订阅（${fx.missing_currencies.map((c) => esc(c)).join("、")}）因暂无汇率未计入，可在「设置 → 手动汇率」补录后纳入。</div>`
+    : "";
+  const rows = fx.items.map((i) => `
+    <div class="fx-item">
+      <span class="fx-name">${esc(i.name)}<span class="fx-sub">${CYCLE_LABEL[i.cycle] || i.cycle} ${fmtMoney(i.amount, i.currency)}</span></span>
+      <span class="fx-amount">≈ ${fmtMoney(i.monthly_cost, base)}/月</span>
+    </div>`).join("");
+  detail.innerHTML =
+    note + rows +
+    `<div class="fx-item fx-total-row"><span class="fx-name">月均合计</span><span class="fx-amount">≈ ${fmtMoney(fx.total_monthly, base)}/月</span></div>`;
+}
+$("#fx-bar").addEventListener("click", () => {
+  const open = localStorage.getItem("subdeck-fx-open") !== "1";
+  localStorage.setItem("subdeck-fx-open", open ? "1" : "0");
+  renderFxSummary();
+});
 
 // 列表操作（事件委托，表格/卡片共用）
 document.addEventListener("click", async (e) => {
