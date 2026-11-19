@@ -617,15 +617,15 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 /* A 实色（solid）：默认卡片样式，无特殊处理 */
 /* B 点缀玻璃（glass，默认）：卡片保持实色，仅顶栏/底栏毛玻璃（已有）——零改动即最稳 */
 /* C 重度玻璃（glassplus，实验性）：大卡片半透明毛玻璃，透出背景层 */
-body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal) {
+body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
   background: color-mix(in srgb, var(--card) 74%, transparent);
   backdrop-filter: blur(16px) saturate(1.25);
   -webkit-backdrop-filter: blur(16px) saturate(1.25);
 }
-[data-theme="dark"] body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal) {
+[data-theme="dark"] body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
   background: color-mix(in srgb, var(--card) 62%, transparent);
 }
-body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal) {
+body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
   border-color: color-mix(in srgb, var(--line) 55%, transparent);
 }
 /* C 档下表单控件/小卡片微透，保持文字可读 */
@@ -692,17 +692,25 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
   }
   .settings-nav {
     display: block; position: sticky; top: 84px; font-size: 13.5px;
+    /* v1.6.10 B 方案：容器与右侧卡片同材质（实底/毛玻璃由皮肤变量接管），去贯穿竖线 */
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 8px;
   }
   .settings-nav a {
-    display: block; padding: 7px 12px; margin: 2px 0;
+    display: block; position: relative; padding: 7px 12px; margin: 1px 0;
     color: var(--muted); text-decoration: none;
-    border-left: 2px solid var(--line); border-radius: 0 8px 8px 0;
+    border-radius: 8px;
     transition: color .15s, background .15s;
   }
-  .settings-nav a:hover { color: var(--text); background: var(--card); }
+  .settings-nav a:hover { color: var(--text); background: color-mix(in srgb, var(--primary) 7%, transparent); }
   .settings-nav a.on {
-    color: var(--primary); border-left-color: var(--primary);
-    background: var(--primary-weak); font-weight: 600;
+    color: var(--primary); font-weight: 600;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+  .settings-nav a.on::before {   /* 圆头短标：只在当前项出现 */
+    content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 55%; border-radius: 999px; background: var(--primary);
   }
   .settings-panels { display: flex; flex-direction: column; gap: 14px; align-items: center; min-width: 0; }
   #view-settings .panel { max-width: 880px; width: 100%; }
