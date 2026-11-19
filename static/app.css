@@ -358,6 +358,10 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
   background: var(--card); color: var(--text); font-size: 14px; font-family: inherit;
 }
 .form-row textarea { resize: vertical; }
+/* v1.6.8 修复：.form-row input 的 width:100%/padding 会覆盖 .check-row input（同优先级按序覆盖），
+   导致编辑弹窗「订阅进行中」复选框被拉成全宽巨型框（勾居中悬空、文字被挤右侧折行，PC/手机一致）。
+   提高选择器优先级精准复位尺寸。 */
+.form-row .check-row input { width: 16px; height: 16px; padding: 0; flex: none; }
 .form-row input:focus, .form-row select:focus, .form-row textarea:focus, .ics-row input:focus {
   outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
   border-color: var(--primary);
