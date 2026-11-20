@@ -1121,10 +1121,15 @@ function renderAppearanceControls() {
 
 function renderThemeSwatches() {
   const cur = state.settings.theme_color || "";
+  /* v1.6.15 双色预览：左上=浅色模式色，右下=深色模式色（与 applyAccentColor 的 L+8/上限78 提亮规则一致） */
+  const grad = (c) => {
+    const [h, s, l] = hexToHsl(c);
+    return `linear-gradient(135deg, ${c} 50%, hsl(${h | 0} ${s | 0}% ${Math.min(l + 8, 78).toFixed(1)}%) 50%)`;
+  };
   $("#theme-swatches").innerHTML =
     `<button type="button" class="theme-swatch default ${!cur ? "active" : ""}" data-color="" title="默认蓝"></button>` +
     THEME_PRESETS.map((c) =>
-      `<button type="button" class="theme-swatch ${c === cur ? "active" : ""}" data-color="${c}" style="background:${c}" title="${c}"></button>`
+      `<button type="button" class="theme-swatch ${c === cur ? "active" : ""}" data-color="${c}" style="background:${grad(c)}" title="${c}"></button>`
     ).join("");
 }
 
