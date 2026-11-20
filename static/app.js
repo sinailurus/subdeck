@@ -133,7 +133,7 @@ function showLogin() {
 $("#login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
-    await api("/api/login", { method: "POST", body: { password: $("#login-password").value } });
+    await api("/api/login", { method: "POST", body: { password: ($("#login-password").value || "").trim() } });
     $("#login-password").value = "";
     await boot();
   } catch { $("#login-error").classList.remove("hidden"); }
