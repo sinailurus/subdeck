@@ -46,17 +46,6 @@ parameters:
       zh-CN:
         name: 数据文件夹（必选）
         description: 选择存放订阅数据库、备份与 Logo 图片缓存的可读写文件夹；共享文件夹还需在绿联应用设置中授权本应用访问。如需迁移其他实例的旧数据，请先停用应用并复制数据后再切换文件夹。
-  - key: TZ
-    type: string
-    required: true
-    changeable: true
-    i18n:
-      en-US:
-        name: Timezone
-        description: IANA timezone name for billing dates and calendar display, e.g. Asia/Shanghai. Full list at en.wikipedia.org/wiki/List_of_tz_database_time_zones
-      zh-CN:
-        name: 时区
-        description: 账单日期与日历视图使用的 IANA 时区名称，例如 Asia/Shanghai。完整列表见 en.wikipedia.org/wiki/List_of_tz_database_time_zones
 i18n:
   en-US:
     name: SubDeck
