@@ -8,5 +8,6 @@ __pycache__/
 .venv/
 venv/
 *.md
+docs/
 # LICENSE 不排除：镜像随附开源协议（绿联应用商店审核要求，Dockerfile COPY LICENSE）
 .gitignore

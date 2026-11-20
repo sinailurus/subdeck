@@ -4,14 +4,15 @@
 # 镜像地址已指向作者 GHCR（CI 自动构建），无需修改。
 #
 # user: "0:0" 为推荐配置，请勿删除：容器以 root 启动后，
-# 入口脚本自动修复 /data 属主并降权为普通用户运行服务进程（root 仅存在于启动瞬间）。
+# 入口脚本自动修复 /data 属主并降权为普通用户运行服务进程（root 仅存在于启动瞬间；
+# 绿联 upk 应用包内通过 RUN_AS_ROOT=1 跳过降权，属特例，详见 README）。
 #
 # 配置项在 .env 文件中修改（参考 .env.example）
 
 services:
   subdeck:
     image: ghcr.io/sinailurus/subdeck:latest             # CI 自动构建的 GHCR 镜像
-    user: "0:0"                                          # 修权限必需，勿删（服务进程自动降权，非 root 裸奔）
+    user: "0:0"                                          # 修权限必需，勿删（服务进程自动降权运行）
     # build: .                                          # ← 本地构建时启用
     container_name: subdeck
     restart: unless-stopped

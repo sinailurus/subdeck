@@ -256,7 +256,7 @@ SubDeck 不设账号注册体系，<b>没有用户表、不收集邮箱注册信
   <li><b>传输安全：</b>部署者若通过反向代理（如 Nginx、Caddy、CDN 隧道）提供 HTTPS，登录与数据传输即受 TLS 保护；SubDeck 自身响应带 <code>X-Content-Type-Options</code>、<code>X-Frame-Options</code>、<code>Content-Security-Policy</code> 等安全响应头。纯 HTTP 内网访问不经公网传输。</li>
   <li><b>认证安全：</b>密码比对采用常数时间比较，防时序侧信道；会话 Cookie 为 HMAC-SHA256 签名、HttpOnly、SameSite=Lax；签名密钥文件权限 0600。</li>
   <li><b>上传安全：</b>图片仅接受 PNG / JPG / WebP 并校验文件头，拒绝 SVG 上传以杜绝存储型 XSS。</li>
-  <li><b>您的责任：</b>自托管部署者应妥善保管服务器访问权限、<code>.env</code> 中的密码配置与 <code>data/</code> 备份；若实例暴露公网（如走隧道），请务必设置访问密码。日历订阅链接与令牌等同于密码，请勿外传。</li>
+  <li><b>您的责任：</b>自托管部署者应妥善保管服务器访问权限、部署配置（环境变量或应用安装向导）中的密码配置与 <code>data/</code> 备份；若实例暴露公网（如走隧道），请务必设置访问密码。日历订阅链接与令牌等同于密码，请勿外传。</li>
 </ul>
 <p>任何网络服务都无法保证绝对安全。如发现异常访问，请立即更换访问密码并重置日历令牌。</p>
 

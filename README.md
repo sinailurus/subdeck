@@ -25,9 +25,30 @@
 
 ## 界面预览
 
-| 桌面端 | 手机端 |
-| --- | --- |
-| 表格布局 + 筛选 | 卡片布局 + 底部导航 |
+**桌面端 · 订阅列表**
+
+<p align="center">
+  <img src="docs/screenshots/desktop-subscriptions.jpg" width="49%" alt="订阅列表（浅色模式）">
+  <img src="docs/screenshots/desktop-subscriptions-dark.jpg" width="49%" alt="订阅列表（深色模式）">
+</p>
+
+**桌面端 · 支出概览**
+
+<p align="center">
+  <img src="docs/screenshots/desktop-dashboard.jpg" width="49%" alt="支出概览（浅色模式）">
+  <img src="docs/screenshots/desktop-dashboard-dark.jpg" width="49%" alt="支出概览（深色模式）">
+</p>
+
+**手机端（卡片布局 + 底部导航）**
+
+<p align="center">
+  <img src="docs/screenshots/mobile-subscriptions.jpg" width="23%" alt="订阅列表（浅色模式）">
+  <img src="docs/screenshots/mobile-subscriptions-dark.jpg" width="23%" alt="订阅列表（深色模式）">
+  <img src="docs/screenshots/mobile-dashboard.jpg" width="23%" alt="支出概览（浅色模式）">
+  <img src="docs/screenshots/mobile-dashboard-dark.jpg" width="23%" alt="支出概览（深色模式）">
+</p>
+
+> 截图中的第三方服务名称与标志（Netflix、爱奇艺、iCloud、Microsoft、Photoshop 等）仅用于演示界面效果，订阅与金额均为虚构数据；相关商标归各自权利人所有，本项目与对应服务商无任何关联。
 
 ## 快速开始
 
@@ -221,3 +242,5 @@ python3 tests/e2e.py
 ## 免责声明
 
 本项目按"现状"提供，仅供个人订阅记录管理使用。扣费日与金额以各服务商实际账单为准，因依赖本工具数据导致的漏付 / 错付，作者不承担责任。
+
+界面预览截图中的第三方品牌名称与标志仅作界面演示之用，所涉订阅信息均为虚构数据；相关商标与版权归各自权利人所有，本项目与对应服务商不存在任何关联、授权或合作关系。
