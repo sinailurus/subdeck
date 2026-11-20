@@ -1,0 +1,24 @@
+# SubDeck · 绿联 UGOS Pro 应用包内编排文件
+# 镜像随 .upk 包内置（rootfs_<arch>/images/*.tar），tag 与 tar 内一致，安装时不联网拉取
+services:
+  subdeck:
+    image: ghcr.io/sinailurus/subdeck:1.6.17
+    user: "0:0"                                          # 必须保留：入口脚本以 root 自动修复数据目录权限后降权运行
+    container_name: subdeck
+    restart: unless-stopped
+    ports:
+      - "8300:8000"                                      # 应用固定对外端口 8300，容器内服务端口 8000
+    volumes:
+      # {{ if and .DATA_PATH (index .DATA_PATH 0) }}
+      - type: bind
+        source: |-
+          ${DATA_PATH}
+        target: /data
+        read_only: false
+      # {{ else }}
+      - ./data:/data
+      # {{ end }}
+    environment:
+      TZ: ${TZ}
+      DATA_DIR: /data
+      AUTH_PASSWORD: ${AUTH_PASSWORD}                    # 安装向导「网页登录密码」配置项，对应 project.yaml parameters

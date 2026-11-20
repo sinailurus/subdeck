@@ -1,0 +1,65 @@
+spec_version: "2.1"
+app_id: com.sinailurus.subdeck
+version: 1.6.17
+support_arch:
+  - amd64
+  - arm64
+supports:
+  - app
+  - pc
+is_docker_app: true
+only_admin: true
+allow_add_access_path: true
+port: 8300
+open_type: tab
+tag_types:
+  - utility
+depend_fw_version: 1.13.0.0000
+depend_docker_version: 1.7.0.0000
+license_agreement_link:
+  - https://github.com/sinailurus/subdeck/blob/main/LICENSE
+source_code_link:
+  - https://github.com/sinailurus/subdeck
+privacy_policy_link:
+  - https://github.com/sinailurus/subdeck/blob/main/static/privacy-policy.html
+parameters:
+  - key: AUTH_PASSWORD
+    type: password
+    required: true
+    changeable: true
+    i18n:
+      en-US:
+        name: Web Login Password
+        description: Password for signing in to the SubDeck web UI. Required to enable password protection. Use at least 8 characters and avoid weak passwords.
+      zh-CN:
+        name: 网页登录密码
+        description: SubDeck 网页界面的登录密码，用于保护订阅数据。请使用 8 位以上字符，避免弱密码。
+  - key: DATA_PATH
+    type: path
+    multi: false
+    required: false
+    changeable: true
+    i18n:
+      en-US:
+        name: Data Folder
+        description: Choose a writable folder for the subscription database, backups and logo cache. Shared folders must be authorized for this app in UGOS Pro settings. Leave blank to use the app-internal ./data directory. Stop the app and migrate existing data before switching folders.
+      zh-CN:
+        name: 数据文件夹
+        description: 选择存放订阅数据库、备份与 Logo 图片缓存的可读写文件夹；共享文件夹还需在绿联应用设置中授权本应用访问。留空则使用应用内置的 ./data 目录。更换文件夹前请先停用应用并迁移原数据。
+i18n:
+  en-US:
+    name: SubDeck
+    description: SubDeck is a self-hosted subscription manager for personal NAS devices and servers. Track recurring bills for streaming, software, cloud storage and memberships with monthly, quarterly or yearly billing cycles. Features include multi-currency amounts with automatic exchange-rate conversion, payment-method and subscription-status filters, a calendar view of upcoming charges, monthly-average cost statistics, iCal calendar export for system calendar apps, and optional password protection with data backup and restore. All subscription data stays on your own NAS with no third-party cloud dependency; exchange rates and service logos are fetched from public sources over the network, while all other features work offline. Licensed under PolyForm Noncommercial 1.0.0, independently developed, with no affiliation, authorization or partnership with third-party brands mentioned.
+    author: sinailurus
+    official: https://github.com/sinailurus/subdeck
+    help: https://github.com/sinailurus/subdeck/issues
+    publisher: sinailurus
+    publisher_link: https://github.com/sinailurus
+  zh-CN:
+    name: SubDeck 订阅管理
+    description: SubDeck 是部署在个人 NAS 或服务器上的自托管订阅管理工具，通过浏览器统一管理流媒体、软件、云存储、会员等各类订阅的账单周期与费用。支持月付、季付、年付等计费周期与自定义账单日，多币种金额与自动汇率折算，付款方式（自动续费/手动）与订阅状态筛选，日历视图查看近期扣款时间线，账单明细与月均费用统计，iCal 日历输出（可导入系统日历应用查看扣款日程），以及可选的登录密码保护与数据备份导入导出。订阅数据完全保存在本地 NAS，不依赖任何第三方云服务；汇率与 Logo 图片需联网从公开接口获取，其余核心功能均可离线使用。忘记密码可通过配置文件重置。项目采用 PolyForm Noncommercial 1.0.0 许可，由个人独立开发，与文中涉及的第三方服务品牌不存在隶属、授权或合作关系。
+    author: sinailurus
+    official: https://github.com/sinailurus/subdeck
+    help: https://github.com/sinailurus/subdeck/issues
+    publisher: sinailurus
+    publisher_link: https://github.com/sinailurus

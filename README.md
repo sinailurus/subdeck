@@ -35,7 +35,19 @@
 
 ### 方式二：使用预构建镜像（NAS / Docker 用户，推荐）
 
-先发布镜像（见下方「发布你自己的镜像」），然后把 `docker-compose.yml` 里的 `image:` 改成你的镜像地址即可。
+直接使用 CI 发布好的官方镜像，无需本地构建。把 `docker-compose.yml` 里的 `image:` 一行换成：
+
+```yaml
+image: ghcr.io/sinailurus/subdeck:latest
+```
+
+国内拉 GHCR 失败或很慢时，换南大代理地址（内容与官方镜像完全一致，新版本发布约 10 分钟内同步）：
+
+```yaml
+image: ghcr.nju.edu.cn/sinailurus/subdeck:latest
+```
+
+生产环境建议固定版本号（如 `ghcr.nju.edu.cn/sinailurus/subdeck:1.6.16`），避免 `latest` 自动更新带来的意外变化。端口、密码、数据目录等其余配置与「方式三」一致；绿联 UGOS 用户可直接用 [compose.ugreen.yml](compose.ugreen.yml)，把其中 `image:` 换成上面的地址即可。
 
 ### 方式三：本地构建
 

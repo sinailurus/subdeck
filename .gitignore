@@ -15,3 +15,8 @@ venv/
 .DS_Store
 Thumbs.db
 subdeck.ini
+
+# 绿联 UPK 构建产物不入库（CI 从 GHCR 拉镜像生成）
+ugreen/subdeck-app/build_dir/
+ugreen/subdeck-app/rootfs_amd64/
+ugreen/subdeck-app/rootfs_arm64/
