@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.13"
+APP_VERSION = "1.6.14"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -576,7 +576,7 @@ def _with_rates(conn: sqlite3.Connection, sub: dict) -> dict:
 
 
 @app.get("/api/subscriptions")
-def list_subs(request: Request, filter: str = "all", search: str = ""):
+def list_subs(request: Request, filter: str = "all", search: str = "", status: str = "all"):
     require_auth(request)
     with db() as conn:
         rows = conn.execute(
@@ -585,6 +585,10 @@ def list_subs(request: Request, filter: str = "all", search: str = ""):
         conn.commit()
         if filter in ALLOWED_PAY:
             subs = [s for s in subs if s["payment_method"] == filter]
+        if status == "active":       # v1.6.14 订阅状态维度（与付款方式正交，可组合）
+            subs = [s for s in subs if s["active"]]
+        elif status == "paused":
+            subs = [s for s in subs if not s["active"]]
         if search.strip():
             q = search.strip().lower()
             subs = [s for s in subs if q in s["name"].lower()

@@ -276,12 +276,22 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .chip {
   padding: 7px 13px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--card); color: var(--muted); cursor: pointer; font-size: 13.5px;
+  white-space: nowrap;   /* v1.6.14：窄容器下防按钮内文字换行（armed 7字态曾折成两行） */
 }
 .chip.active { background: var(--primary-weak); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+/* v1.6.14 筛选升级：维度循环按钮生效态（蓝边+加粗，颜色走主题变量适配 A/B/C×深浅 6 态） */
+#filter-chips .chip.armed { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+#filter-chips .chip.armed .dim { color: color-mix(in srgb, var(--primary) 60%, var(--muted)); font-weight: 400; }
+/* 方案 Z 溢出兜底：不换行+横滑（藏滚动条）+右缘渐隐手势提示；仅 #filter-chips 生效，设置页 .chips 不受影响 */
+#filter-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+#filter-chips::-webkit-scrollbar { display: none; }
+#filter-chips.scrollable { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
+/* 统计卡点击入口（活跃卡/已暂停 hint） */
+.stat-card.clickable { cursor: pointer; }
 
 /* ---------- 按钮 ---------- */
 .btn {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   padding: 9px 16px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--card); color: var(--text); cursor: pointer; font-size: 14px;
   white-space: nowrap;

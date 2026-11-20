@@ -101,7 +101,8 @@ async function api(path, opts = {}) {
 const state = {
   me: null, settings: null, ratesInfo: null,
   subs: [], stats: null,
-  filter: "all", search: "", sort: "",
+  payDim: null, statusDim: null,   // v1.6.14 双维筛选：null=无筛选档；付款方式循环 manual→auto，订阅状态循环 active→paused
+  search: "", sort: "",
   view: "dashboard",
   cal: { ym: null, byDate: {}, selected: null },
   form: { logoFile: null, logoPreview: null, clearLogo: false, color: PALETTE[0] },
@@ -184,6 +185,7 @@ function switchView(name) {
   document.querySelectorAll(".nav-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.nav === name));
   if (name === "calendar") refreshCalendar();   // 每次切入拉最新推算数据
+  if (name === "subs") updateChipsOverflow();   // v1.6.14：hidden 时 scrollWidth=0，切入订阅页后重检渐隐兜底
 }
 document.querySelectorAll(".nav-btn").forEach((b) =>
   b.addEventListener("click", () => switchView(b.dataset.nav)));
@@ -524,8 +526,11 @@ $("#cal-grid").addEventListener("click", (e) => {
 /* ---------------- 订阅列表 ---------------- */
 async function reloadSubs() {
   const q = state.search ? `&search=${encodeURIComponent(state.search)}` : "";
-  state.subs = await api(`/api/subscriptions?filter=${state.filter}${q}`);
+  const pay = state.payDim || "all";
+  const st = state.statusDim || "all";
+  state.subs = await api(`/api/subscriptions?filter=${pay}&status=${st}${q}`);
   renderSubs();
+  updateChipsOverflow();
 }
 
 function renderSubs() {
@@ -656,13 +661,63 @@ document.addEventListener("click", async (e) => {
 $("#search-input").addEventListener("input", (e) => {
   state.search = e.target.value; reloadSubs();
 });
+/* v1.6.14 筛选升级：三按钮 chips——全部（一键清空）+ 付款方式/订阅状态（循环切换，含无筛选档） */
+const PAY_CYCLE = [null, "manual", "auto"];          // 循环含无筛选档：裸名→手动→自动→裸名
+const STATUS_CYCLE = [null, "active", "paused"];     // 裸名→活跃→已暂停→裸名
+const PAY_LABEL = { manual: "手动", auto: "自动" };
+const STATUS_LABEL = { active: "活跃", paused: "已暂停" };
+
+function nextCycle(cur, cycle) {
+  return cycle[(cycle.indexOf(cur) + 1) % cycle.length];   // null→第1档→…→绕回 null
+}
+
+function renderFilterChips() {
+  const all = $("#chip-all"), pay = $("#chip-pay"), status = $("#chip-status");
+  const cleared = !state.payDim && !state.statusDim;
+  all.classList.toggle("active", cleared);   // 有任意筛选生效时「全部」退高亮变灰（仍可点击重置）
+  if (state.payDim) {
+    pay.classList.add("armed");
+    pay.innerHTML = `<span class="dim">付款方式：</span>${PAY_LABEL[state.payDim]}`;
+  } else { pay.classList.remove("armed"); pay.textContent = "付款方式"; }
+  if (state.statusDim) {
+    status.classList.add("armed");
+    status.innerHTML = `<span class="dim">订阅状态：</span>${STATUS_LABEL[state.statusDim]}`;
+  } else { status.classList.remove("armed"); status.textContent = "订阅状态"; }
+  updateChipsOverflow();
+}
+
+/* 方案 Z 兜底：仅真实溢出时加右缘渐隐提示可横滑 */
+function updateChipsOverflow() {
+  requestAnimationFrame(() => {
+    const el = $("#filter-chips");
+    el.classList.toggle("scrollable", el.scrollWidth > el.clientWidth + 1);
+  });
+}
+window.addEventListener("resize", updateChipsOverflow);
+
 $("#filter-chips").addEventListener("click", (e) => {
   const chip = e.target.closest(".chip");
   if (!chip) return;
-  state.filter = chip.dataset.filter;
-  document.querySelectorAll("#filter-chips .chip").forEach((c) =>
-    c.classList.toggle("active", c === chip));
+  if (chip.id === "chip-all") { state.payDim = null; state.statusDim = null; }
+  else if (chip.id === "chip-pay") state.payDim = nextCycle(state.payDim, PAY_CYCLE);
+  else if (chip.id === "chip-status") state.statusDim = nextCycle(state.statusDim, STATUS_CYCLE);
+  renderFilterChips();
   reloadSubs();
+});
+
+/* 统计卡点击入口：活跃订阅卡→切订阅页+活跃筛选；「另有 N 个已暂停」hint→已暂停筛选 */
+function jumpFiltered(statusDim) {
+  state.payDim = null;
+  state.statusDim = statusDim;
+  renderFilterChips();
+  switchView("subs");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  reloadSubs();
+}
+$("#stat-active-card").addEventListener("click", () => jumpFiltered("active"));
+$("#stat-paused-hint").addEventListener("click", (e) => {
+  e.stopPropagation();   // hint 在活跃卡内部，点它只切已暂停，不冒泡成活跃
+  jumpFiltered("paused");
 });
 
 /* ---------------- 添加/编辑弹窗 ---------------- */
