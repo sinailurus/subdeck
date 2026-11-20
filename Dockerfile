@@ -18,7 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY static ./static
-COPY LICENSE ./LICENSE   # 绿联应用商店审核要求：开源协议随镜像分发
+# 绿联应用商店审核要求：开源协议随镜像分发
+COPY LICENSE ./LICENSE
 
 # 非 root 运行；数据目录由挂载卷提供
 RUN useradd --system --create-home appuser \
