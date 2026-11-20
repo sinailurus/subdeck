@@ -4,7 +4,6 @@ services:
   subdeck:
     image: ghcr.io/sinailurus/subdeck:1.6.17
     user: "0:0"                                          # 必须保留：入口脚本以 root 自动修复数据目录权限后降权运行
-    container_name: subdeck
     restart: unless-stopped
     ports:
       - "8300:8000"                                      # 应用固定对外端口 8300，容器内服务端口 8000
