@@ -68,23 +68,41 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 按 index 中对应架构子清单的 digest 精确拉取：docker pull --platform 在带
+      # attestation 的 OCI index 上有落地歧义（实测 arm64 pull 后 inspect 仍是 amd64）
       - name: Export amd64 image
         run: |
-          docker pull --platform linux/amd64 ${GHCR_IMAGE}:${{ env.APP_VERSION }}
-          test "$(docker image inspect ${GHCR_IMAGE}:${{ env.APP_VERSION }} --format '{{.Architecture}}')" = "amd64"
+          V="${{ env.APP_VERSION }}"
+          token=$(curl -sf "https://ghcr.io/token?scope=repository:sinailurus/subdeck:pull" | jq -r .token)
+          digest=$(curl -sf -H "Authorization: Bearer $token" \
+            -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+            "https://ghcr.io/v2/sinailurus/subdeck/manifests/${V}" | \
+            jq -r '.manifests[] | select(.platform.architecture=="amd64" and .platform.os=="linux") | .digest')
+          test -n "$digest"
+          docker pull "${GHCR_IMAGE}@${digest}"
+          docker tag "${GHCR_IMAGE}@${digest}" "${GHCR_IMAGE}:${V}"
+          test "$(docker image inspect ${GHCR_IMAGE}:${V} --format '{{.Architecture}}')" = "amd64"
           docker save \
-            -o ugreen/subdeck-app/rootfs_amd64/images/subdeck-${{ env.APP_VERSION }}-amd64.tar \
-            ${GHCR_IMAGE}:${{ env.APP_VERSION }}
-          docker image rm ${GHCR_IMAGE}:${{ env.APP_VERSION }}
+            -o ugreen/subdeck-app/rootfs_amd64/images/subdeck-${V}-amd64.tar \
+            ${GHCR_IMAGE}:${V}
+          docker image rm ${GHCR_IMAGE}:${V}
 
       - name: Export arm64 image
         run: |
-          docker pull --platform linux/arm64 ${GHCR_IMAGE}:${{ env.APP_VERSION }}
-          test "$(docker image inspect ${GHCR_IMAGE}:${{ env.APP_VERSION }} --format '{{.Architecture}}')" = "arm64"
+          V="${{ env.APP_VERSION }}"
+          token=$(curl -sf "https://ghcr.io/token?scope=repository:sinailurus/subdeck:pull" | jq -r .token)
+          digest=$(curl -sf -H "Authorization: Bearer $token" \
+            -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+            "https://ghcr.io/v2/sinailurus/subdeck/manifests/${V}" | \
+            jq -r '.manifests[] | select(.platform.architecture=="arm64" and .platform.os=="linux") | .digest')
+          test -n "$digest"
+          docker pull "${GHCR_IMAGE}@${digest}"
+          docker tag "${GHCR_IMAGE}@${digest}" "${GHCR_IMAGE}:${V}"
+          test "$(docker image inspect ${GHCR_IMAGE}:${V} --format '{{.Architecture}}')" = "arm64"
           docker save \
-            -o ugreen/subdeck-app/rootfs_arm64/images/subdeck-${{ env.APP_VERSION }}-arm64.tar \
-            ${GHCR_IMAGE}:${{ env.APP_VERSION }}
-          docker image rm ${GHCR_IMAGE}:${{ env.APP_VERSION }}
+            -o ugreen/subdeck-app/rootfs_arm64/images/subdeck-${V}-arm64.tar \
+            ${GHCR_IMAGE}:${V}
+          docker image rm ${GHCR_IMAGE}:${V}
 
       - name: Install verified ugcli
         run: |
