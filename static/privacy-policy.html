@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light" />
+<title>隐私政策 - SubDeck</title>
+<style>
+:root {
+  color: #1a1a1a;
+  background: #f5f5f5;
+  font-family: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.75;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 16px; }
+main {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 8%);
+}
+h1, h2 { line-height: 1.35; }
+h1 { margin: 0 0 8px; font-size: 30px; }
+h2 { margin: 32px 0 8px; font-size: 19px; }
+p, li { color: #374151; }
+.meta { margin-top: 0; color: #6b7280; font-size: 14px; }
+.notice {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-left: 4px solid #1a1a1a;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+a { color: #111827; font-weight: 600; text-underline-offset: 3px; }
+a:focus-visible {
+  outline: 3px solid #111827;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+footer { margin-top: 36px; padding-top: 24px; border-top: 1px solid #e5e7eb; }
+.table-wrap {
+  overflow-x: auto;
+  margin: 14px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+th { color: #111827; background: #f9fafb; font-weight: 700; }
+tr:last-child td { border-bottom: 0; }
+.necessary { color: #991b1b; font-weight: 700; }
+.optional { color: #166534; font-weight: 700; }
+@media (max-width: 640px) {
+  body { padding: 16px 12px; }
+  main { padding: 28px 22px; border-radius: 16px; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>SubDeck 隐私政策</h1>
+  <p class="meta">更新并生效日期：2026 年 11 月 20 日 · 适用版本 v1.6.16 及之后</p>
+</header>
+
+<p class="notice">
+  SubDeck 是自托管的开源软件。您使用本工具录入的全部订阅与账单数据，均保存在<b>您自己部署的
+  SubDeck 实例所在的服务器或 NAS 上</b>，SubDeck 项目开发者不运营任何云端服务，也无法访问您的实例。
+  该实例的部署者（通常就是您本人，或为家人朋友搭建实例的那个人）是实际的数据处理者。
+  如果您是他人部署实例的使用者，请同时向该部署者确认数据的管理方式。
+</p>
+
+<p>本政策说明 SubDeck 各项功能处理个人信息的目的、方式、范围，以及您查询、导出和删除这些信息的途径。</p>
+
+<h2>一、运营者基本情况与联系方式</h2>
+<ul>
+  <li><b>软件开发者与发布者：</b>sinailurus（个人开发者，非企业主体）。</li>
+  <li><b>注册/办公地址：</b>个人开发者远程开发，无企业注册地址或固定对外办公场所。</li>
+  <li><b>投诉、举报与问题反馈：</b>通过 <a href="https://github.com/sinailurus/subdeck/issues">GitHub Issues</a> 提交并跟踪处理进度。</li>
+  <li><b>自托管实例运营者：</b>若 SubDeck 由其他组织或个人部署（例如家人朋友替您搭建），实际的数据控制主体以该实例部署者公示的信息为准。</li>
+</ul>
+
+<h2>二、基本业务功能与必要信息</h2>
+<p>
+SubDeck 不设账号注册体系，<b>没有用户表、不收集邮箱注册信息</b>。唯一可选的身份认证是部署者通过
+环境变量配置的一把访问密码：密码为空时鉴权关闭（纯内网使用），设置密码后网页访问需要登录。
+因此本工具不存在"注册 / 登录才提供必要信息"的环节——您录入的订阅数据本身就是您主动写入自己服务器的业务内容。
+</p>
+<p>
+各项功能所需的配置（访问密码、端口、数据目录）均由部署者在部署时决定，详见仓库
+<a href="https://github.com/sinailurus/subdeck#readme">README</a> 的「配置说明」。
+</p>
+
+<h2>三、按功能说明个人信息处理规则</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>业务功能</th><th>处理目的</th><th>处理方式与存储位置</th><th>信息范围</th><th>是否必要</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>订阅记录管理</td>
+      <td>记录会员、订阅、定期账单并自动滚动扣费日</td>
+      <td>您主动录入、编辑或删除；保存在实例所在服务器的本地 SQLite 数据库</td>
+      <td>订阅名称、金额、币种、周期、扣费日、付款方式（自动扣费/手动付款）、分类、备注、订阅 Logo 图片</td>
+      <td class="necessary">核心业务数据，您自主决定录入内容</td>
+    </tr>
+    <tr>
+      <td>支出统计与多币种折算</td>
+      <td>按周/月/年统计花费、按基准币种折算</td>
+      <td>由实例根据已录入的订阅数据在本地计算</td>
+      <td>不产生新的个人信息，仅使用上述订阅数据</td>
+      <td class="necessary">随核心功能提供</td>
+    </tr>
+    <tr>
+      <td>访问密码登录（可选）</td>
+      <td>验证访问者身份，防止未授权访问</td>
+      <td>密码由部署者写在环境变量中，<b>不写入数据库</b>；比对采用常数时间比较；登录成功后颁发 HMAC-SHA256 签名的 HttpOnly 会话 Cookie（30 天有效），签名密钥持久化在数据目录 <code>secret.key</code>（权限 0600）</td>
+      <td>访问密码（部署时配置）、会话令牌</td>
+      <td class="necessary">不启用密码则不处理；纯内网可不开启</td>
+    </tr>
+    <tr>
+      <td>日历订阅</td>
+      <td>把扣费日同步到手机自带日历 App</td>
+      <td>系统生成一个持久化访问令牌并拼入订阅链接；手机日历客户端凭链接定期拉取 .ics 文本</td>
+      <td>日历访问令牌、已录入订阅的扣费日信息</td>
+      <td class="necessary">不使用即不生成令牌</td>
+    </tr>
+    <tr>
+      <td>邮箱提醒（可选扩展）</td>
+      <td>扣费日前发送提醒邮件</td>
+      <td>部署者在设置页填写邮箱服务商的 SMTP 信息；实例凭该配置直接向邮箱服务商发信</td>
+      <td>SMTP 服务器地址、端口、账号、授权码、收件邮箱地址</td>
+      <td class="optional">非必要，不配置即不处理</td>
+    </tr>
+    <tr>
+      <td>汇率折算（可选扩展）</td>
+      <td>获取实时汇率用于多币种统计</td>
+      <td>实例主动向公共汇率 API 发起请求（见第四节），<b>只发送币种代码</b>（如 USD、JPY），不包含您的任何订阅数据或设备信息</td>
+      <td>币种代码</td>
+      <td class="optional">非必要；断网时使用本地缓存汇率，不影响基本使用</td>
+    </tr>
+    <tr>
+      <td>图片上传</td>
+      <td>自定义订阅 Logo、应用背景</td>
+      <td>您主动上传；仅接受 PNG / JPG / WebP（校验文件头，<b>拒绝 SVG</b> 以杜绝 XSS），单文件 ≤ 2MB；保存在实例的数据目录</td>
+      <td>您选择上传的图片文件</td>
+      <td class="optional">非必要，不传则使用内置字母头像与默认背景</td>
+    </tr>
+    <tr>
+      <td>外观与偏好设置</td>
+      <td>主题色、界面风格、背景、应用名称等个性化</td>
+      <td>您在设置页配置；保存在实例数据库并多端同步</td>
+      <td>主题色、风格档位、背景图、应用名称与图标</td>
+      <td class="optional">非必要，有默认值</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>四、个人信息保护"双清单"</h2>
+
+<h3>（一）已收集个人信息清单</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>信息类别</th><th>具体信息</th><th>来源与存储位置</th><th>保存期限</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>订阅业务数据</td>
+      <td>订阅名称、金额、币种、周期、扣费日、付款方式、分类、备注、Logo 图片、背景图</td>
+      <td>您录入或上传；保存在实例的 <code>data/</code> 目录（SQLite 数据库 + 图片文件）</td>
+      <td>您删除对应记录或删除数据目录前</td>
+    </tr>
+    <tr>
+      <td>认证与令牌</td>
+      <td>访问密码（环境变量，不落库）、HMAC 签名会话 Cookie、日历订阅令牌、签名密钥文件</td>
+      <td>部署配置或系统自动生成；密钥与令牌保存在实例数据目录，Cookie 保存在您的设备浏览器</td>
+      <td>会话 Cookie 30 天；令牌与密钥保留至部署者更换或删除</td>
+    </tr>
+    <tr>
+      <td>邮箱提醒配置</td>
+      <td>SMTP 服务器地址、端口、账号、授权码、收件邮箱</td>
+      <td>部署者填写；保存在实例数据库</td>
+      <td>清除该配置或删除数据目录前</td>
+    </tr>
+    <tr>
+      <td>偏好设置</td>
+      <td>主题、界面风格、基准币种、提醒天数等</td>
+      <td>您配置；保存在实例数据库</td>
+      <td>修改、重置或删除数据目录前</td>
+    </tr>
+    <tr>
+      <td>汇率缓存</td>
+      <td>各币种汇率数值及获取时间</td>
+      <td>汇率 API 返回；缓存在实例本地</td>
+      <td>被新汇率覆盖或删除数据目录前</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>（二）与第三方共享个人信息清单</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>第三方</th><th>共享信息</th><th>目的与触发条件</th><th>控制方式</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>默认状态</b></td>
+      <td>无</td>
+      <td>SubDeck 不接入任何广告、统计或遥测 SDK，不向任何第三方上报使用行为，数据不出您的服务器</td>
+      <td>无需额外操作</td>
+    </tr>
+    <tr>
+      <td>汇率数据源：frankfurter.dev（主）与 open.er-api.com（备用）</td>
+      <td>仅币种代码</td>
+      <td>仅在需要实时汇率折算时由实例发起请求；不含订阅内容、金额、设备指纹或 IP 之外的任何个人信息</td>
+      <td>不用多币种可只用基准币种；亦可断网使用本地缓存汇率</td>
+    </tr>
+    <tr>
+      <td>您自行配置的邮箱服务商（SMTP）</td>
+      <td>提醒邮件内容（扣费日与订阅名称摘要）经 SMTP 发往您指定的收件邮箱</td>
+      <td>仅在您主动配置邮箱提醒并到达提醒日期时发生</td>
+      <td>在设置页清空邮箱提醒配置即停用</td>
+    </tr>
+    <tr>
+      <td>您的手机日历 App</td>
+      <td>订阅链接对应的 .ics 日历内容（扣费日）</td>
+      <td>仅在您主动订阅日历链接后，由日历客户端定期拉取</td>
+      <td>在日历 App 中取消订阅该日历；在服务端重置令牌可作废旧链接</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>五、信息的存储、传输与安全</h2>
+<ul>
+  <li><b>存储位置：</b>全部业务数据保存在您部署实例的服务器 / NAS 本地（<code>data/</code> 目录，SQLite 数据库 + 图片文件），SubDeck 项目方没有任何服务器参与存储。</li>
+  <li><b>传输安全：</b>部署者若通过反向代理（如 Nginx、Caddy、CDN 隧道）提供 HTTPS，登录与数据传输即受 TLS 保护；SubDeck 自身响应带 <code>X-Content-Type-Options</code>、<code>X-Frame-Options</code>、<code>Content-Security-Policy</code> 等安全响应头。纯 HTTP 内网访问不经公网传输。</li>
+  <li><b>认证安全：</b>密码比对采用常数时间比较，防时序侧信道；会话 Cookie 为 HMAC-SHA256 签名、HttpOnly、SameSite=Lax；签名密钥文件权限 0600。</li>
+  <li><b>上传安全：</b>图片仅接受 PNG / JPG / WebP 并校验文件头，拒绝 SVG 上传以杜绝存储型 XSS。</li>
+  <li><b>您的责任：</b>自托管部署者应妥善保管服务器访问权限、<code>.env</code> 中的密码配置与 <code>data/</code> 备份；若实例暴露公网（如走隧道），请务必设置访问密码。日历订阅链接与令牌等同于密码，请勿外传。</li>
+</ul>
+<p>任何网络服务都无法保证绝对安全。如发现异常访问，请立即更换访问密码并重置日历令牌。</p>
+
+<h2>六、您的权利与数据删除</h2>
+<ul>
+  <li><b>查询与更正：</b>在应用内随时查看、编辑任何一条订阅记录与设置。</li>
+  <li><b>导出：</b>数据备份 = 拷贝实例的 <code>data/</code> 目录（数据库 + 全部图片），或使用应用内备份功能导出。</li>
+  <li><b>删除单项数据：</b>在应用内删除对应订阅记录、图片或清空某项配置，立即生效。</li>
+  <li><b>彻底删除：</b>停止容器后删除整个 <code>data/</code> 目录，即物理删除该实例的全部数据，无法恢复。SubDeck 项目方不持有任何副本。</li>
+  <li><b>作废令牌：</b>更换访问密码后重新登录即可；在服务端清空日历令牌设置可作废所有旧日历链接。</li>
+</ul>
+<p>注意：删除实例数据不会影响您已导出的备份或已在手机日历中的历史事件，请按需自行处理。</p>
+
+<h2>七、未成年人保护</h2>
+<p>
+SubDeck 是面向个人与家庭记账场景的效率工具，不专门面向未成年人提供服务，也不会主动收集任何访问者的年龄信息。
+未成年人应在监护人同意和指导下使用。
+</p>
+
+<h2>八、投诉、举报与争议处理</h2>
+<p>
+您可以通过 <a href="https://github.com/sinailurus/subdeck/issues">GitHub Issues</a> 提交投诉、举报、隐私相关请求或安全问题。
+请勿在公开 Issue 中粘贴访问密码、日历令牌、SMTP 授权码或完整订阅数据。
+与您所用实例相关的数据请求（如他人部署的实例），应优先联系该实例的部署者。
+</p>
+
+<h2>九、政策更新</h2>
+<p>
+本政策可能随功能变化而更新，更新后的版本将标注日期并随源码仓库发布。
+涉及个人信息处理规则的重要变化，会在仓库 Releases 说明中提示。
+</p>
+
+<footer>
+  <p>© 2026 sinailurus · <a href="https://github.com/sinailurus/subdeck">SubDeck 源码仓库</a> · 用户协议见仓库 <a href="https://github.com/sinailurus/subdeck/blob/main/TERMS.md">TERMS.md</a></p>
+</footer>
+</main>
+</body>
+</html>

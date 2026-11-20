@@ -3,6 +3,8 @@
 一个自部署的订阅管理工具：记录你的各种会员 / 订阅 / 定期账单，自动滚动扣费日，到期提醒，多币种实时汇率折算，按周 / 月 / 年统计花费。
 
 > **AIGC 声明**：本项目通过 AI 辅助（Vibe Coding）方式开发，由人类主导需求设计、功能取舍、代码审查与测试验证。
+>
+> **文档**：[用户协议（TERMS.md）](TERMS.md) ｜ [隐私政策](static/privacy-policy.html)（应用内部署后可通过 `http://NAS_IP:8300/assets/privacy-policy.html` 访问）
 
 ## 功能特性
 

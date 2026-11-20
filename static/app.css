@@ -44,6 +44,17 @@ body {
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
+/* 关于面板文档链接：跟随主题色（--primary 由 JS 注入用户设置色），替换浏览器默认蓝 */
+.about a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background .15s;
+}
+.about a:hover { background: var(--primary-weak); }
+.about a:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent); }
 .ta-r { text-align: right; }
 
 /* ---------- 外观背景层（皮肤色晕 / 自定义背景图） ---------- */
