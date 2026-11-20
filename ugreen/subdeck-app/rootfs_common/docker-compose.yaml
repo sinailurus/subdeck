@@ -8,15 +8,10 @@ services:
     ports:
       - "8300:8000"                                      # 应用固定对外端口 8300，容器内服务端口 8000
     volumes:
-      # {{ if and .DATA_PATH (index .DATA_PATH 0) }}
       - type: bind
-        source: |-
-          ${DATA_PATH}
+        source: ${DATA_PATH}
         target: /data
         read_only: false
-      # {{ else }}
-      - ./data:/data
-      # {{ end }}
     environment:
       TZ: ${TZ}
       DATA_DIR: /data

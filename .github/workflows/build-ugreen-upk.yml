@@ -50,6 +50,8 @@ jobs:
           used = set(re.findall(r"\$\{(\w+)\}", compose))
           missing = keys - used
           assert not missing, f"compose 未引用 parameters: {missing}"
+          missing2 = used - keys
+          assert not missing2, f"compose 引用了未定义参数: {missing2}"
           print("parameters check ok:", sorted(keys))
           EOF
           # 指定 Release tag 时必须与 APP_VERSION 匹配（v 前缀）
