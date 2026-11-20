@@ -434,10 +434,12 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 }
 .theme-swatch {
   width: 30px; height: 30px; border-radius: 10px; cursor: pointer;
-  border: 2px solid transparent; padding: 0;
+  border: none; padding: 0;
+  appearance: none; -webkit-appearance: none;
   display: inline-flex; align-items: center; justify-content: center;
 }
-.theme-swatch.active { border-color: var(--text); }
+/* v1.6.16：选中描边改 box-shadow 外环——原 2px transparent border 区域在移动端会把渐变背景渲出半透明边，色块看着像没填满（TA 真机截图反馈） */
+.theme-swatch.active { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text); }
 .theme-swatch.default {
   background: linear-gradient(135deg, #4f6ef7 50%, #6d87ff 50%);
 }
