@@ -2,8 +2,8 @@
 # 镜像随 .upk 包内置（rootfs_<arch>/images/*.tar），tag 与 tar 内一致，安装时不联网拉取
 services:
   subdeck:
-    image: ghcr.io/sinailurus/subdeck:1.6.17
-    user: "0:0"                                          # 必须保留：入口脚本以 root 自动修复数据目录权限后降权运行
+    image: ghcr.io/sinailurus/subdeck:1.6.18
+    user: "0:0"                                          # 必须保留：配合 RUN_AS_ROOT 以 root 运行（UGOS 数据文件夹为 000+ACL 模型，降权用户无法稳定写入）
     restart: unless-stopped
     ports:
       - "8300:8000"                                      # 应用固定对外端口 8300，容器内服务端口 8000
@@ -14,5 +14,6 @@ services:
         read_only: false
     environment:
       TZ: ${TZ}
+      RUN_AS_ROOT: "1"                                   # 入口脚本跳过降权直接以 root 运行（UGOS Pro 数据文件夹策略所致，详见 docker-entrypoint.sh）
       DATA_DIR: /data
       AUTH_PASSWORD: ${AUTH_PASSWORD}                    # 安装向导「网页登录密码」配置项，对应 project.yaml parameters

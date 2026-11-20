@@ -2,6 +2,11 @@
 
 本文件记录 SubDeck 所有用户可见的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。README 只挂链接，完整记录以此文件为准。
 
+## [1.6.18] - 2026-11-20
+
+### 修复
+- **绿联 UGOS Pro 应用装上后反复重启无法启动**（真机实测两种死法：`/data/logos PermissionError` → 容器重建后 `sqlite3 unable to open database file`）：UGOS Pro 安装向导创建的数据文件夹是「权限位 000 + ACL 白名单」的特殊模型，且容器重建时会重刷该策略——原入口脚本「root 修属主后降权为 appuser 运行」的设计在此模型下无法稳定写入。现 upk 包内 compose 注入 `RUN_AS_ROOT=1`，入口脚本识别后跳过降权，服务进程直接以 root 运行（root 持 `CAP_DAC_OVERRIDE`，无视权限位/ACL mask/文件属主）。普通 Docker 自建部署不受影响（未设置该变量时入口脚本行为与原版完全一致）。
+
 ## [1.6.17] - 2026-11-20
 
 ### 新增
