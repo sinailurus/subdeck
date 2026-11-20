@@ -16,9 +16,11 @@
 - 🎨 **外观系统**：主题色自定义、三档界面风格（实色 / 点缀玻璃 / 重度玻璃）、自定义背景图 + 遮罩浓度、应用名称与图标自定义——全部多端同步
 - 🖼️ **Logo**：内置字母头像（自动配色），也支持上传自定义图片（PNG / JPG / WebP，≤2MB）
 - 📅 **日历订阅**：一键生成 iCal 链接，账单日直接进手机自带日历 App
+- 📧 **邮箱到期提醒**：配置一次 SMTP，临近扣费自动发信提醒（可自定义提醒提前量）
+- 💾 **数据备份**：网页一键导出 / 导入全量备份（含回滚留档），换设备迁移不用碰命令行
 - 🌓 **深色模式**：跟随系统，也可手动切换
 - 📱 **响应式适配**：桌面端表格 + 顶栏导航，手机/平板卡片 + 底部导航，支持"添加到主屏幕"（PWA）
-- 🔒 **可选密码保护**：一行环境变量开启；纯内网使用可不开启
+- 🔒 **可选密码保护**：一行环境变量开启；HMAC 签名 Cookie + 登录限速防暴力破解；纯内网使用可不开启
 - 🐳 **单容器部署**：SQLite 存储，无外部依赖，数据备份 = 拷贝一个目录
 
 ## 界面预览
@@ -28,6 +30,12 @@
 | 表格布局 + 筛选 | 卡片布局 + 底部导航 |
 
 ## 快速开始
+
+### 绿联 UGOS Pro 用户：应用包（.upk，最省事）
+
+到 [Releases](https://github.com/sinailurus/subdeck/releases) 下载对应架构的 `.upk`（绝大多数 x86 绿联机型选 `amd64`，ARM 机型选 `arm64`）→ 应用中心手动安装 → 按向导设置访问密码与数据文件夹即可，无需碰 Docker。
+
+> ⚠️ **该应用包暂未在绿联应用商店上架**，属开发者自装包，未经官方审核。仅适合已完成设备授权（应用中心 → 设置 → 应用开发设置）、愿意自行承担使用风险的用户试用；安装前建议了解应用内「数据备份」功能并做好数据保护。上架进展请关注本仓库 Releases。
 
 ### 方式一：Windows / macOS 一键部署包（没有 NAS / 不会 Docker）
 
@@ -47,7 +55,7 @@ image: ghcr.io/sinailurus/subdeck:latest
 image: ghcr.nju.edu.cn/sinailurus/subdeck:latest
 ```
 
-生产环境建议固定版本号（如 `ghcr.nju.edu.cn/sinailurus/subdeck:1.6.16`），避免 `latest` 自动更新带来的意外变化。端口、密码、数据目录等其余配置与「方式三」一致；绿联 UGOS 用户可直接用 [compose.ugreen.yml](compose.ugreen.yml)，把其中 `image:` 换成上面的地址即可。
+生产环境建议固定版本号（如 `ghcr.nju.edu.cn/sinailurus/subdeck:1.6.18`），避免 `latest` 自动更新带来的意外变化。端口、密码、数据目录等其余配置与「方式三」一致；绿联 UGOS 用户也可用 [compose.ugreen.yml](compose.ugreen.yml)，把其中 `image:` 换成上面的地址即可（更推荐直接用上方的 .upk 应用包）。
 
 ### 方式三：本地构建
 
@@ -60,9 +68,11 @@ docker compose up -d        # 默认使用 8300 端口
 
 访问 `http://NAS_IP:8300`。
 
-> **NAS 权限提示（绿联 / 群晖等必读）**：请保持或恢复 compose 中的 `user: "0:0"`。程序入口脚本会先用 root 自动修复 `/data` 目录属主（治 bind-mount 权限不匹配），再降权为普通用户运行服务进程——root 仅存在于启动瞬间，服务本身不以 root 跑。若容器以非 root 启动而数据目录属主不符，会报 `PermissionError: '/data/logos'` 并重启循环。
+> **NAS 权限提示（绿联 / 群晖等必读）**：请保持 compose 中的 `user: "0:0"`。Docker 自建部署时，程序入口脚本会先用 root 自动修复 `/data` 目录属主（治 bind-mount 权限不匹配），再降权为普通用户运行服务进程。绿联 UGOS Pro 应用包（.upk）内则通过 `RUN_AS_ROOT=1` 让服务进程直接以 root 运行——UGOS 向导创建的数据文件夹是「权限位 000 + ACL 白名单」模型且会在容器重建时重刷策略，降权用户无法稳定写入（v1.6.18 真机实测两种故障后根治）。若容器以非 root 启动而数据目录属主不符，会报 `PermissionError: '/data/logos'` 并重启循环。
 
-### 绿联 UGOS（「项目」部署）
+### 绿联 UGOS（Docker「项目」部署）
+
+> 更推荐直接安装上方的 .upk 应用包（免 Docker、装完即用）。以下方式适合想在「项目」里自己管 Compose 的用户。
 
 1. Docker → **「项目」** → 新建项目，名称 `subdeck`
 2. 「Compose 配置」整段粘贴仓库根目录的 [compose.ugreen.yml](compose.ugreen.yml)，**只改 `AUTH_PASSWORD`**
@@ -83,7 +93,7 @@ docker compose up -d        # 默认使用 8300 端口
 3. 项目名称填 `subdeck`，路径选择刚才的 `subdeck` 文件夹，来源选「使用已有的 docker-compose.yml」
 4. 完成向导，等待构建 / 拉取完成后访问 `http://NAS_IP:8300`
 
-> ARM 架构的群晖机型请使用预构建镜像（方式一），本地构建会很慢。
+> ARM 架构的群晖机型请使用预构建镜像（方式二），本地构建会很慢。
 
 ### 威联通 QTS（Container Station）
 
@@ -109,6 +119,7 @@ docker compose logs -f              # 查看日志，Ctrl+C 退出
 | `SUBDECK_PORT` | `8300` | 宿主机端口 |
 | `SUBDECK_DATA` | `./data` | 数据目录（数据库 + 上传的 logo） |
 | `PUID` / `PGID` | 空 | 可选。对齐数据目录属主（与 NAS 其他容器共享 data 目录时用），两个都填才生效 |
+| `RUN_AS_ROOT` | 空 | 服务进程以 root 运行（跳过降权）。绿联 upk 包内已内置，普通 Docker 部署**无需设置**——仅 UGOS 向导创建的数据文件夹（000 权限位 + ACL 白名单模型）需要 |
 
 ## 数据备份
 
@@ -130,7 +141,8 @@ docker compose pull && docker compose up -d   # 预构建镜像方式
 - 数据（数据库 / 登录密钥 / 上传图片）全部存放在 `data/` 挂载目录里，更新只替换容器、不触碰数据，登录状态也会保留
 - **升级红线：不要修改 compose 文件里 `volumes` 的映射路径**——改了路径，新容器就读不到旧数据了
 - v1.1.0 起已治本 /data 权限问题：此前用 `user: "0:0"` 绕过的，**建议移除该行**（保留也兼容）；需与其他容器对齐属主时改用 `PUID` / `PGID`。**绿联 UGOS 用户例外：建议保留 `user: "0:0"`**——绿联各版本 UI 对 compose 字段的解析行为不一，保留是零成本保险
-- **绿联**：路径一，项目列表「一键更新」（镜像走南大代理时，新版本发布约 10 分钟内可检测到）；路径二，「项目 → 编辑」把 `image` 末尾改成新版本号（如 `:1.1.2`）→ 保存 → 确认「重新部署」。两种路径验收一致：容器「创建时间」刷新 + 网页「关于」页版本号变新
+- **绿联**：路径一，项目列表「一键更新」（镜像走南大代理时，新版本发布约 10 分钟内可检测到）；路径二，「项目 → 编辑」把 `image` 末尾改成新版本号（如 `:1.6.18`）→ 保存 → 确认「重新部署」。两种路径验收一致：容器「创建时间」刷新 + 网页「关于」页版本号变新
+- **绿联 .upk 应用包用户**：到 Releases 下载新版本 `.upk` → 应用中心重新安装（数据文件夹选同一个），升级数据不受影响
 - 群晖图形界面：镜像仓库 → 拉取新版镜像 → 用新镜像重建容器，挂载目录保持不变
 
 ## 日历订阅
@@ -170,12 +182,17 @@ subdeck/
 │   ├── auth.py     # 密码登录与签名 Cookie
 │   ├── billing.py  # 账单日滚动与折算
 │   ├── rates.py    # 汇率同步与缓存
+│   ├── mailer.py   # 邮箱到期提醒
+│   ├── backup.py   # 备份导出 / 导入 / 回滚
 │   ├── ical.py     # 日历导出
 │   └── currencies.py
 ├── static/         # 前端（原生 JS，无构建步骤）
+├── run_exe.py      # Windows/macOS 一键部署包启动器
+├── ugreen/         # 绿联 UGOS Pro 应用包（.upk）打包配置
+├── docker-entrypoint.sh   # 入口：修数据目录权限 / 降权 / RUN_AS_ROOT 开关
 ├── Dockerfile
 ├── docker-compose.yml
-└── .github/workflows/  # 自动构建双架构镜像
+└── .github/workflows/  # 自动构建双架构镜像 / 一键部署包 / UGOS 应用包
 ```
 
 ## 开发与测试
