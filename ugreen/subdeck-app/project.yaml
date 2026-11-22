@@ -57,7 +57,7 @@ i18n:
     publisher_link: https://github.com/sinailurus
   zh-CN:
     name: SubDeck 订阅管理
-    description: SubDeck 是部署在自己 NAS 上的订阅管理工具，帮你把流媒体、软件、云存储等各类订阅的续费日期和花销统一管起来。支持多币种自动汇率折算、扣费日历、月均支出统计和到期邮件提醒，可设置登录密码保护，数据支持备份导出。所有数据都保存在你自己的 NAS 上，不依赖第三方云服务。
+    description: SubDeck 是部署在自己 NAS 上的订阅管理工具，帮你把流媒体、软件、云存储等各类订阅的续费日期和花销统一管起来。支持多币种自动汇率折算、扣费日历、月均支出统计和到期邮件提醒，可设置登录密码保护，数据支持备份导出。所有数据均保存在 NAS 本地，不依赖第三方云服务。
     author: sinailurus
     official: https://github.com/sinailurus/subdeck
     help: https://github.com/sinailurus/subdeck/issues
