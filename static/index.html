@@ -417,9 +417,9 @@
   </nav>
 </div>
 
-<!-- 导出备份包选项弹窗（v1.6.11）：敏感信息勾选 -->
-<div id="export-mask" class="modal-mask hidden">
-  <div class="modal" style="max-width:400px;">
+<!-- 导出备份包选项弹窗（v1.6.11）：敏感信息勾选。v1.6.19 起小型弹窗统一 .modal-confirm 居中卡片 -->
+<div id="export-mask" class="modal-mask modal-confirm-mask hidden">
+  <div class="modal modal-confirm">
     <h2>导出备份包</h2>
     <p class="muted small" style="margin:10px 0 4px;">备份包含全部订阅、设置与图片。是否包含敏感信息（如邮箱提醒的 SMTP 授权码）？包含后在新环境导入即可直接使用，无需重新配置。</p>
     <label style="display:flex; align-items:center; gap:8px; margin:12px 0; cursor:pointer;">
@@ -432,9 +432,9 @@
   </div>
 </div>
 
-<!-- 重置日历订阅链接确认弹窗（v1.6.19）：确认型，全断点居中紧凑卡片（样式见 app.css #ics-reset-mask） -->
-<div id="ics-reset-mask" class="modal-mask hidden">
-  <div class="modal">
+<!-- 重置日历订阅链接确认弹窗（v1.6.19）：小型弹窗统一 .modal-confirm 居中卡片 -->
+<div id="ics-reset-mask" class="modal-mask modal-confirm-mask hidden">
+  <div class="modal modal-confirm">
     <h2>重置日历订阅链接</h2>
     <p class="muted small" style="margin:10px 0 4px;">重置后旧链接立即作废，所有已订阅该链接的日历 App 将无法再获取更新，需要用新链接重新订阅。此操作不可撤销。仅当链接疑似泄露或需要收回访问权限时才需要重置。</p>
     <div class="modal-foot">

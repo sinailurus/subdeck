@@ -426,14 +426,15 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 }
 .foot-right { display: flex; gap: 8px; }
 
-/* 确认型弹窗（v1.6.19）：全断点居中紧凑卡片，对齐 iOS Alert / M3 Basic Dialog 惯例；
-   与表单型弹窗（贴底 sheet，便于输入）区分。仅用于短确认，按钮横排靠右 */
-#ics-reset-mask { align-items: center; padding: 0 16px; }
-#ics-reset-mask .modal {
+/* 确认型/小型弹窗（v1.6.19 定稿，全项目统一）：全断点居中紧凑卡片，
+   对齐 iOS Alert / M3 Basic Dialog 惯例；与表单型弹窗（贴底 sheet，便于输入）区分。
+   短确认内容适用，按钮横排靠右；新增小型弹窗一律挂 .modal-confirm */
+.modal-mask.modal-confirm-mask { align-items: center; padding: 0 16px; }
+.modal.modal-confirm {
   max-width: 320px; border-radius: 18px;
   padding: 18px 16px 16px;
 }
-#ics-reset-mask .modal-foot { justify-content: flex-end; }
+.modal.modal-confirm .modal-foot { justify-content: flex-end; }
 
 /* ---------- 设置页 ---------- */
 /* v1.6.2 修复：面板限宽 640 但未居中，平板/手机宽视口（如切电脑 UA 后 ~980px）下贴左、右侧大片空白。margin-inline:auto 全断点统一居中 */
