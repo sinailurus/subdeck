@@ -1327,6 +1327,23 @@ $("#btn-copy-ics").addEventListener("click", async () => {
   }
 });
 
+// 重置日历订阅链接（v1.6.19）：二次确认，旧链接立即作废
+$("#btn-reset-ics").addEventListener("click", () => $("#ics-reset-mask").classList.remove("hidden"));
+$("#btn-ics-reset-cancel").addEventListener("click", () => $("#ics-reset-mask").classList.add("hidden"));
+$("#ics-reset-mask").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) $("#ics-reset-mask").classList.add("hidden");
+});
+$("#btn-ics-reset-go").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/ics-token/reset", { method: "POST" });
+    $("#ics-url").value = location.origin + r.url;
+    $("#ics-reset-mask").classList.add("hidden");
+    toast("已重置，请用新链接重新订阅日历");
+  } catch {
+    toast("重置失败，请重试");
+  }
+});
+
 $("#btn-logout").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   toast(t("logoutOk"));

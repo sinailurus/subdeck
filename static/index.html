@@ -366,7 +366,8 @@
         <h2>日历订阅</h2>
         <p class="muted small">把下面的链接添加到手机/电脑的日历 App（如系统日历 → 添加订阅日历），扣费日会自动出现在日历里。</p>
         <div class="ics-row"><input id="ics-url" readonly><button id="btn-copy-ics" class="btn">复制</button></div>
-        <p class="muted small">点击上方输入框会自动全选完整链接；推荐直接点「复制」按钮，再把完整链接粘贴到支持订阅的日历 App 中。若日历 App 不支持 URL 订阅或导入失败，可在浏览器打开链接下载 .ics 文件，再通过日历的「导入」功能一次性导入。链接长期有效，含访问令牌，请勿公开分享。</p>
+        <p class="muted small">点击上方输入框会自动全选完整链接；推荐直接点「复制」按钮，再把完整链接粘贴到支持订阅的日历 App 中。若日历 App 不支持 URL 订阅或导入失败，可在浏览器打开链接下载 .ics 文件，再通过日历的「导入」功能一次性导入。链接长期有效，含访问令牌，等同密码，请勿公开分享；若怀疑泄露，可点下方按钮重置。</p>
+        <div style="margin-top:8px;"><button id="btn-reset-ics" class="btn danger">重置链接</button></div>
       </div>
       <div class="panel" id="sett-backup">
         <h2>数据备份</h2>
@@ -427,6 +428,18 @@
     <div class="modal-foot">
       <button type="button" id="btn-export-cancel" class="btn ghost">取消</button>
       <button type="button" id="btn-export-go" class="btn">导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 重置日历订阅链接确认弹窗（v1.6.19） -->
+<div id="ics-reset-mask" class="modal-mask hidden">
+  <div class="modal" style="max-width:400px;">
+    <h2>重置日历订阅链接</h2>
+    <p class="muted small" style="margin:10px 0 4px;">重置后旧链接立即作废，所有已订阅该链接的日历 App 将无法再获取更新，需要用新链接重新订阅。此操作不可撤销。仅当链接疑似泄露或需要收回访问权限时才需要重置。</p>
+    <div class="modal-foot">
+      <button type="button" id="btn-ics-reset-cancel" class="btn ghost">取消</button>
+      <button type="button" id="btn-ics-reset-go" class="btn danger">确认重置</button>
     </div>
   </div>
 </div>

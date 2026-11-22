@@ -154,6 +154,21 @@ def ics():
     call("GET", "/api/calendar.ics?token=not-a-token", expect=401)
 check("iCal带token订阅+令牌持久化", ics)
 
+def ics_reset():
+    # v1.6.19：重置令牌——旧链接立即作废，新链接可访问
+    old_url = holder["ics_url"]
+    b, _ = call("POST", "/api/ics-token/reset", cookie=C)
+    assert b["url"].startswith("/api/calendar/") and b["url"].endswith(".ics") and b["url"] != old_url, b
+    call("GET", old_url, expect=401)          # 旧令牌作废
+    call("GET", "/api/ics-url", expect=401)   # 接口需登录
+    body, _ = call("POST", "/api/ics-token/reset", expect=401)  # 未登录不能重置
+    ics, _ = call("GET", b["url"])
+    assert b"BEGIN:VCALENDAR" in ics
+    b2, _ = call("GET", "/api/ics-url", cookie=C)
+    assert b2["url"] == b["url"]              # 重置后持久化新令牌
+    holder["ics_url"] = b["url"]
+check("iCal令牌重置+旧链接作废", ics_reset)
+
 def billing_cal():
     b, _ = call("GET", "/api/billing-calendar?months=12", cookie=C)
     es = b["entries"]

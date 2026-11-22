@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.18"
+APP_VERSION = "1.6.19"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -1013,6 +1013,16 @@ def ics_url(request: Request):
         if not token:
             token = secrets.token_urlsafe(24)
             set_setting(conn, "ics_token", token)
+    return {"url": f"/api/calendar/{token}.ics"}
+
+
+@app.post("/api/ics-token/reset")
+def ics_token_reset(request: Request):
+    """重置日历订阅令牌（v1.6.19）：旧链接立即作废，需用新链接重新订阅日历。"""
+    require_auth(request)
+    token = secrets.token_urlsafe(24)
+    with db() as conn:
+        set_setting(conn, "ics_token", token)
     return {"url": f"/api/calendar/{token}.ics"}
 
 
