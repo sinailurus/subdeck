@@ -49,7 +49,7 @@ parameters:
 i18n:
   en-US:
     name: SubDeck
-    description: SubDeck is a self-hosted subscription manager for personal NAS devices and servers. Track recurring bills for streaming, software, cloud storage and memberships with monthly, quarterly or yearly billing cycles. Features include multi-currency amounts with automatic exchange-rate conversion, payment-method and subscription-status filters, a calendar view of upcoming charges, monthly-average cost statistics, iCal calendar export for system calendar apps, and optional password protection with data backup and restore. All subscription data stays on your own NAS with no third-party cloud dependency; exchange rates and service logos are fetched from public sources over the network, while all other features work offline. Licensed under PolyForm Noncommercial 1.0.0, independently developed, with no affiliation, authorization or partnership with third-party brands mentioned.
+    description: SubDeck is a self-hosted subscription manager for your NAS. Keep track of billing cycles and costs for streaming, software, cloud storage and other subscriptions, with multi-currency conversion, a billing calendar, monthly-average stats and email reminders. Optional password protection and data backup are included. All data stays on your own NAS, with no third-party cloud dependency.
     author: sinailurus
     official: https://github.com/sinailurus/subdeck
     help: https://github.com/sinailurus/subdeck/issues
@@ -57,7 +57,7 @@ i18n:
     publisher_link: https://github.com/sinailurus
   zh-CN:
     name: SubDeck 订阅管理
-    description: SubDeck 是部署在个人 NAS 或服务器上的自托管订阅管理工具，通过浏览器统一管理流媒体、软件、云存储、会员等各类订阅的账单周期与费用。支持月付、季付、年付等计费周期与自定义账单日，多币种金额与自动汇率折算，付款方式（自动续费/手动）与订阅状态筛选，日历视图查看近期扣款时间线，账单明细与月均费用统计，iCal 日历输出（可导入系统日历应用查看扣款日程），以及可选的登录密码保护与数据备份导入导出。订阅数据完全保存在本地 NAS，不依赖任何第三方云服务；汇率与 Logo 图片需联网从公开接口获取，其余核心功能均可离线使用。忘记密码可通过配置文件重置。项目采用 PolyForm Noncommercial 1.0.0 许可，由个人独立开发，与文中涉及的第三方服务品牌不存在隶属、授权或合作关系。
+    description: SubDeck 是部署在自己 NAS 上的订阅管理工具，帮你把流媒体、软件、云存储等各类订阅的续费日期和花销统一管起来。支持多币种自动汇率折算、扣费日历、月均支出统计和到期邮件提醒，可设置登录密码保护，数据支持备份导出。所有数据都保存在你自己的 NAS 上，不依赖第三方云服务。
     author: sinailurus
     official: https://github.com/sinailurus/subdeck
     help: https://github.com/sinailurus/subdeck/issues
