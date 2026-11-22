@@ -904,7 +904,7 @@ def billing_calendar(request: Request, months: int = 12):
     """
     require_auth(request)
     months = max(1, min(months, 24))
-    today = billing.TODAY
+    today = billing.today()
     end = billing.add_months(today, months)
     with db() as conn:
         rows = conn.execute(
@@ -1106,6 +1106,9 @@ async def import_backup(request: Request):
         data = await upload.read()
         if not data:
             raise ValueError("上传文件为空")
+        # v1.6.19：导入包大小上限（备份 zip 实际几 MB，64MB 余量足够；防误传/恶意大包占满内存）
+        if len(data) > 64 * 1024 * 1024:
+            raise ValueError("备份包超过 64MB 上限，请检查是否选错文件")
         return backup.import_zip_bytes(data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

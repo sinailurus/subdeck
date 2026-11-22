@@ -17,7 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr, formatdate
 
-from .billing import TODAY, ensure_rolled
+from .billing import ensure_rolled
 from .db import get_setting, set_setting
 
 SMTP_TIMEOUT = 15
@@ -89,7 +89,8 @@ def scan_entries(conn, lead_days: int) -> list[dict]:
     返回 [{id, name, amount, currency, date}]；去重依据 notify_state（已提醒的
     账单日不再重复提醒，下个周期是新账单日、正常提醒）。
     """
-    end = TODAY + datetime.timedelta(days=lead_days)
+    t = datetime.date.today()
+    end = t + datetime.timedelta(days=lead_days)
     state = json.loads(get_setting(conn, "notify_state", "{}") or "{}")
     rows = conn.execute(
         "SELECT id,name,amount,currency,cycle,next_billing_date FROM subscriptions "
@@ -98,7 +99,7 @@ def scan_entries(conn, lead_days: int) -> list[dict]:
     for r in rows:
         sub = ensure_rolled(conn, r)
         d = datetime.date.fromisoformat(sub["next_billing_date"])
-        if TODAY <= d <= end and state.get(str(sub["id"])) != d.isoformat():
+        if t <= d <= end and state.get(str(sub["id"])) != d.isoformat():
             out.append({"id": sub["id"], "name": sub["name"], "amount": sub["amount"],
                         "currency": sub["currency"], "date": d.isoformat()})
     out.sort(key=lambda e: e["date"])

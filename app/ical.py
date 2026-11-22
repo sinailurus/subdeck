@@ -17,7 +17,9 @@ def generate_ics(subs: list[dict], base_currency: str, calname: str = "SubDeck �
     calname 跟随设置中的应用名称（v1.4.0 起），日历 App 内显示一致的品牌名。
     """
     today = datetime.date.today()
-    horizon = today.replace(year=today.year + 1)
+    # 未来一年窗口：复用 add_cycle 的年周期推算（月末收缩），避免 2 月 29 日
+    # 直接 replace(year+1) 抛 ValueError（闰日当天生成日历会 500）
+    horizon = add_cycle(today, "yearly")
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",

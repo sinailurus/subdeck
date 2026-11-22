@@ -10,7 +10,11 @@ import sqlite3
 
 from .currencies import CYCLES
 
-TODAY = datetime.date.today()
+
+def today() -> datetime.date:
+    """实时获取今天。v1.6.19 修复：此前用模块级常量 TODAY = date.today()，
+    容器跨天运行后冻结在启动日期，导致倒计时、账单滚动与提醒窗口全部失真。"""
+    return datetime.date.today()
 
 
 def add_cycle(d: datetime.date, cycle: str) -> datetime.date:
@@ -33,7 +37,8 @@ def add_cycle(d: datetime.date, cycle: str) -> datetime.date:
 
 def roll_forward(d: datetime.date, cycle: str) -> datetime.date:
     """把过期日期滚动到今天或未来。"""
-    while d < TODAY:
+    t = today()
+    while d < t:
         d = add_cycle(d, cycle)
     return d
 
@@ -49,7 +54,7 @@ def ensure_rolled(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
             (rolled.isoformat(), datetime.datetime.now().isoformat(timespec="seconds"), sub["id"]),
         )
         sub["next_billing_date"] = rolled.isoformat()
-    sub["days_until"] = (rolled - TODAY).days
+    sub["days_until"] = (rolled - today()).days
     return sub
 
 

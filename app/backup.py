@@ -175,6 +175,10 @@ def _open_backup(data: bytes):
     names = set(zf.namelist())
     if "manifest.json" not in names or "subdeck.db" not in names:
         raise ValueError("缺少 manifest.json 或 subdeck.db，不是 SubDeck 备份包")
+    # v1.6.19：解压后大小上限，防 zip 炸弹（小压缩包解出超大文件占满磁盘/内存）
+    for info in zf.infolist():
+        if info.file_size > 256 * 1024 * 1024:
+            raise ValueError(f"备份包含超大文件（{info.filename} 解压后超过 256MB）")
     try:
         manifest = json.loads(zf.read("manifest.json"))
     except json.JSONDecodeError:
