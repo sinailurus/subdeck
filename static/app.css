@@ -1,4 +1,4 @@
-/* SubDeck 样式 —— 移动优先 + 响应式断点（≥820px 平板/桌面布局） */
+/* SubDeck 样式：移动优先 + 响应式断点（≥820px 平板/桌面布局） */
 
 :root {
   --bg: #f4f6fb;
@@ -449,7 +449,7 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
   appearance: none; -webkit-appearance: none;
   display: inline-flex; align-items: center; justify-content: center;
 }
-/* v1.6.16：选中描边改 box-shadow 外环——原 2px transparent border 区域在移动端会把渐变背景渲出半透明边，色块看着像没填满（TA 真机截图反馈） */
+/* v1.6.16：选中描边改 box-shadow 外环。原 2px transparent border 区域在移动端会把渐变背景渲出半透明边，色块看着像没填满（用户真机截图反馈） */
 .theme-swatch.active { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text); }
 .theme-swatch.default {
   background: linear-gradient(135deg, #4f6ef7 50%, #6d87ff 50%);
@@ -638,7 +638,7 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
  * 任何皮肤 × 深浅主题 = 6 种显示状态，新增模块需全部自查。
  * B/C 档的背景色晕见 #bg-layer；此处管理卡片材质。 */
 /* A 实色（solid）：默认卡片样式，无特殊处理 */
-/* B 点缀玻璃（glass，默认）：卡片保持实色，仅顶栏/底栏毛玻璃（已有）——零改动即最稳 */
+/* B 点缀玻璃（glass，默认）：卡片保持实色，仅顶栏/底栏毛玻璃（已有），本次不改动 */
 /* C 重度玻璃（glassplus，实验性）：大卡片半透明毛玻璃，透出背景层 */
 body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
   background: color-mix(in srgb, var(--card) 74%, transparent);

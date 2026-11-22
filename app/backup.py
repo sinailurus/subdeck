@@ -67,7 +67,7 @@ def _snapshot_db_bytes(strip_sensitive: bool) -> bytes:
 def _pack_zip(sensitive: bool, strip_sensitive: bool = False) -> bytes:
     """打包完整备份。strip_sensitive=True 时剔除敏感键（用户勾选"不含敏感信息"）。
 
-    内部回滚快照传 (True, False)——内部档永远保全量，回滚必须完整。
+    内部回滚快照传 (True, False)：内部档永远保全量，回滚必须完整。
     """
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:

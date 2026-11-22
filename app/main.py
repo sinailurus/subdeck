@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""SubDeck —— 自部署订阅管理（FastAPI 后端入口）。"""
+"""SubDeck 自部署订阅管理（FastAPI 后端入口）。"""
 import datetime
 import hmac
 import io
@@ -818,7 +818,7 @@ def _brand_file_response(filename: str) -> FileResponse:
 
 
 # ---------------------------------------------------------------- 登录页自定义（v1.5.0）
-# 上传/修改需登录；读取公开——登录页在认证前就要渲染装饰配置。
+# 上传/修改需登录；读取公开（登录页在认证前就要渲染装饰配置）。
 # 公开面仅暴露装饰性内容（标题/欢迎语/背景/图标），订阅等业务数据照旧锁在登录后。
 
 @app.get("/api/brand/login-page")
@@ -1004,7 +1004,7 @@ def ics_url(request: Request):
     v1.5.1 起令牌持久化：首次生成后固定不变（settings.ics_token），
     手机日历 App 订阅一次长期有效，不再 30 天过期。
     需要作废旧链接时清空该设置即可自动重新生成。
-    v1.6.5：改为路径式 token（/api/calendar/{token}.ics）——部分日历客户端
+    v1.6.5：改为路径式 token（/api/calendar/{token}.ics）。部分日历客户端
     （如小米日历）对 URL query 参数支持不佳，路径式兼容性更好。
     """
     require_auth(request)

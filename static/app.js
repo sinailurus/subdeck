@@ -597,7 +597,7 @@ function renderSubs() {
 }
 
 // ---- 外币订阅月均汇总条（v1.6.7） ----
-// 数据源 stats.fx_summary：全量活跃订阅、monthly_cost 求和——与概览「月均支出」同一口径，两处数字可对账
+// 数据源 stats.fx_summary：全量活跃订阅、monthly_cost 求和。与概览「月均支出」同一口径，两处数字可对账
 function renderFxSummary() {
   const box = $("#fx-summary"), bar = $("#fx-bar"), detail = $("#fx-detail");
   const base = state.settings.base_currency;
@@ -661,7 +661,7 @@ document.addEventListener("click", async (e) => {
 $("#search-input").addEventListener("input", (e) => {
   state.search = e.target.value; reloadSubs();
 });
-/* v1.6.14 筛选升级：三按钮 chips——全部（一键清空）+ 付款方式/订阅状态（循环切换，含无筛选档） */
+/* v1.6.14 筛选升级：三按钮 chips：全部（一键清空）+ 付款方式/订阅状态（循环切换，含无筛选档） */
 const PAY_CYCLE = [null, "manual", "auto"];          // 循环含无筛选档：裸名→手动→自动→裸名
 const STATUS_CYCLE = [null, "active", "paused"];     // 裸名→活跃→已暂停→裸名
 const PAY_LABEL = { manual: "手动", auto: "自动" };
