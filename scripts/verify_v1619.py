@@ -35,22 +35,21 @@ def modal_geometry(page):
         m.element_handle())
     return bb, ov
 
-def assert_layout(name, page, width, height, expect_center):
+def assert_layout(name, page, width, height, expect_center=None):
+    """v1.6.19 确认弹窗改为全断点居中紧凑卡片，expect_center 保留兼容旧签名（不再分支）"""
     open_calendar_modal(page, width, height)
     bb, ov = modal_geometry(page)
     m = page.locator("#ics-reset-mask .modal")
     check(f"{name}: 弹窗可见", m.is_visible())
     if not m.is_visible() or bb is None:
         return
-    check(f"{name}: 宽度={bb['width']:.0f}px", 300 <= bb["width"] <= min(400, width), f"got {bb['width']}")
+    check(f"{name}: 宽度={bb['width']:.0f}px", 280 <= bb["width"] <= min(400, width), f"got {bb['width']}")
     check(f"{name}: 无内部溢出", not ov["overflowX"] and not ov["overflowY"], str(ov))
     check(f"{name}: 不超视口", bb["x"] >= 0 and bb["x"] + bb["width"] <= width and bb["y"] >= 0, f"bb={bb}")
-    if expect_center:
-        cy = bb["y"] + bb["height"] / 2
-        check(f"{name}: 桌面居中弹窗", abs(cy - height / 2) < height * 0.2, f"centerY={cy:.0f}/{height}")
-    else:
-        check(f"{name}: 手机贴底抽屉", bb["y"] + bb["height"] >= height - 4,
-              f"bottom={bb['y']+bb['height']:.0f}/{height}")
+    cy = bb["y"] + bb["height"] / 2
+    check(f"{name}: 垂直居中", abs(cy - height / 2) < height * 0.2, f"centerY={cy:.0f}/{height}")
+    cx = bb["x"] + bb["width"] / 2
+    check(f"{name}: 水平居中", abs(cx - width / 2) < 4, f"centerX={cx:.0f}/{width}")
     for bid in ["#btn-ics-reset-cancel", "#btn-ics-reset-go"]:
         btn = page.locator(bid)
         check(f"{name}: 按钮 {bid} 可见", btn.is_visible() and btn.bounding_box() is not None)
