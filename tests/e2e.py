@@ -155,7 +155,7 @@ def ics():
 check("iCal带token订阅+令牌持久化", ics)
 
 def ics_reset():
-    # v1.6.19：重置令牌——旧链接立即作废，新链接可访问
+    # v1.6.19：重置令牌，旧链接立即作废，新链接可访问
     old_url = holder["ics_url"]
     b, _ = call("POST", "/api/ics-token/reset", cookie=C)
     assert b["url"].startswith("/api/calendar/") and b["url"].endswith(".ics") and b["url"] != old_url, b

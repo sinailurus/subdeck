@@ -5,7 +5,7 @@ set -e
 
 if [ "$(id -u)" = "0" ]; then
   # UGOS Pro（绿联应用包）专用开关：upk 的数据文件夹是「权限位 000 + ACL 白名单」
-  # 模型，且容器重建时 UGOS 会重刷策略，降权用户无法稳定写入（真机实测两种死法：
+  # 模型，且容器重建时 UGOS 会重刷策略，降权用户无法稳定写入（真机实测两类故障：
   # /data/logos PermissionError 与 sqlite unable to open database file）。
   # root 持 CAP_DAC_OVERRIDE，无视权限位/ACL mask/文件属主，直接运行最稳。
   if [ "$RUN_AS_ROOT" = "1" ]; then

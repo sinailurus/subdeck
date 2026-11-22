@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""v1.6.19 日历订阅链接重置——三断点弹窗排版 + 前端闭环验证。
+"""v1.6.19 日历订阅链接重置：三断点弹窗排版 + 前端闭环验证。
 跑法：先起服务（DATA_DIR=临时目录 AUTH_PASSWORD=test123 uvicorn app.main:app --port 8017），再 python3 scripts/verify_v1619.py
 """
 import os, sys

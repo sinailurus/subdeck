@@ -56,7 +56,7 @@ def ensure_ini() -> Path:
 
 
 def read_ini() -> dict:
-    """解析 subdeck.ini，字段缺失/损坏时一律回退默认，绝不让配置文件弄死启动。"""
+    """解析 subdeck.ini，字段缺失/损坏时一律回退默认，避免配置文件问题导致启动失败。"""
     out = {"data_dir": "", "password": "", "port": ""}
     try:
         cp = configparser.ConfigParser()

@@ -548,7 +548,7 @@ _CURRENCY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,7}$")   # 2-8 位大写字母/数�
 
 
 def _load_custom_rates(conn: sqlite3.Connection) -> dict:
-    """custom_rates 存 JSON 对象；坏数据静默回落空字典，绝不让脏设置弄死统计。"""
+    """custom_rates 存 JSON 对象；坏数据静默回落空字典，避免脏设置影响统计。"""
     raw = get_setting(conn, "custom_rates", "{}")
     try:
         data = json.loads(raw or "{}")
