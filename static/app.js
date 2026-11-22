@@ -1144,6 +1144,7 @@ async function saveAppearance(patch, msg) {
       renderCategoryChart();   // v1.6.12 修复：切换图表样式后立即重绘（此前仅刷新页面才生效）
     }
     if ("theme_color" in patch) renderThemeSwatches();
+    if ("bg_image" in patch) renderAppearanceControls();   // v1.6.19 修复：切预设背景后立即刷新选中外环（同 v1.6.12 图表切换教训）
     if (msg) toast(msg);
   } catch (err) { if (err.message !== "unauthorized") toast("保存失败：" + err.message); }
 }
