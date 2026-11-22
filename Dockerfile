@@ -1,4 +1,4 @@
-# SubDeck 生产镜像 —— 单容器，无外部服务依赖
+# SubDeck 生产镜像：单容器，无外部服务依赖
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \

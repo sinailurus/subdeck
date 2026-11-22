@@ -31,8 +31,8 @@ password and safeguard server credentials.
 即物理删除全部数据且无法恢复。备份、迁移与保留期限完全由部署者自行决定与执行；
 因未备份、误删、磁盘故障或升级操作不当造成的数据丢失，SubDeck 项目方无法恢复也不承担责任。
 
-升级版本前请阅读对应版本的升级说明，且不要修改 compose 文件中 `volumes` 的映射路径——
-改了路径，新容器将读不到旧数据。
+升级版本前请阅读对应版本的升级说明，且不要修改 compose 文件中 `volumes` 的映射路径，
+否则新容器将读不到旧数据。
 
 All data lives in the deployer-designated `data/` directory; deleting it is irreversible.
 Backups, migration and retention are solely the deployer's responsibility. The SubDeck

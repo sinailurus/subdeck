@@ -1,4 +1,4 @@
-# SubDeck —— Docker Compose 部署文件
+# SubDeck Docker Compose 部署文件
 #
 # 用法：cp .env.example .env 并修改 AUTH_PASSWORD，然后 docker compose up -d
 # 镜像地址已指向作者 GHCR（CI 自动构建），无需修改。
