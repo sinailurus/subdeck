@@ -11,7 +11,7 @@ DATA_DIR = os.environ.get("DATA_DIR") or os.path.join(
 LOGO_DIR = os.path.join(DATA_DIR, "logos")
 BG_DIR = os.path.join(DATA_DIR, "bg")   # 品牌资产：外观背景图 / 应用图标（多端共享）
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def init_db() -> None:
@@ -45,10 +45,28 @@ def init_db() -> None:
                 value TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS rebates (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                sub_id     INTEGER NOT NULL,
+                date       TEXT    NOT NULL,
+                amount     REAL    NOT NULL,
+                note       TEXT    NOT NULL DEFAULT '',
+                created_at TEXT    NOT NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_subs_next_date
                 ON subscriptions(next_billing_date);
+
+            CREATE INDEX IF NOT EXISTS idx_rebates_sub
+                ON rebates(sub_id);
             """
         )
+        # v1.6.20 回血口径：老库补列（幂等）
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(subscriptions)")}
+        if "share_count" not in cols:
+            conn.execute(
+                "ALTER TABLE subscriptions ADD COLUMN share_count INTEGER NOT NULL DEFAULT 0"
+            )
         # 默认设置
         conn.executemany(
             "INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",

@@ -9,7 +9,7 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
 <title>SubDeck · 订阅管理</title>
-<link rel="stylesheet" href="/assets/app.css?v=1.6.11">
+<link rel="stylesheet" href="/assets/app.css?v=1.6.20">
 </head>
 <body>
 
@@ -51,7 +51,7 @@
     <!-- 概览 -->
     <section id="view-dashboard" class="view">
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-label">月均支出</div><div class="stat-value" id="stat-monthly">--</div></div>
+        <div class="stat-card"><div class="stat-label">月均支出</div><div class="stat-value" id="stat-monthly">--</div><div class="stat-net" id="stat-monthly-net" hidden><b>--</b><span>净成本（扣拼车与回收）</span></div></div>
         <div class="stat-card"><div class="stat-label">年度支出</div><div class="stat-value" id="stat-yearly">--</div></div>
         <div class="stat-card clickable" id="stat-active-card" title="点按查看活跃订阅"><div class="stat-label">活跃订阅</div><div class="stat-value" id="stat-count">--</div><div class="muted small" id="stat-paused-hint" style="display:none;" title="点按查看已暂停订阅"></div></div>
         <div class="stat-card" id="stat-pending-card"><div class="stat-label">即将扣费</div><div class="stat-value" id="stat-pending">--</div></div>
@@ -484,6 +484,25 @@
           <label class="radio-pill"><input type="radio" name="f-pay" value="manual"><span>手动付款</span></label>
         </div>
       </div>
+      <div class="form-row span-2">
+        <label>拼车分摊（可选）</label>
+        <div class="share-editor">
+          <input id="f-share" type="number" min="0" max="99" step="1" inputmode="numeric" placeholder="0">
+          <span class="share-unit">人</span>
+        </div>
+        <p class="muted small" style="margin-top:4px;">与家人朋友拼车时填总人数（含自己），月均成本按金额÷人数计算；留空或 0 表示不拼车。</p>
+      </div>
+      <div class="form-row span-2" id="rebate-block" hidden>
+        <label>回收记录</label>
+        <div id="rebate-list"></div>
+        <div class="rebate-add">
+          <input id="f-rebate-date" type="date">
+          <input id="f-rebate-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="金额">
+          <input id="f-rebate-note" type="text" maxlength="100" placeholder="备注（如：转让给同事）">
+          <button type="button" id="btn-add-rebate" class="btn small ghost">记一笔</button>
+        </div>
+        <p class="muted small" style="margin-top:4px;">转让收入、中途退款都算回收，按计费周期摊销冲减月均成本。金额按订阅币种记。</p>
+      </div>
       <div class="form-row">
         <label>分类</label>
         <input id="f-category" list="category-list" maxlength="30" placeholder="选择或输入">
@@ -535,6 +554,6 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
-<script src="/assets/app.js?v=1.6.11"></script>
+<script src="/assets/app.js?v=1.6.20"></script>
 </body>
 </html>

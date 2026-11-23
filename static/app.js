@@ -313,6 +313,15 @@ function renderStats() {
   $("#stat-monthly").textContent = fmtMoney(s.monthly_total, base);
   $("#stat-yearly").textContent = fmtMoney(s.yearly_total, base);
   $("#stat-count").textContent = s.active_count;
+  // v1.6.20 回血口径：有拼车/回收时，月均支出卡加净口径副行
+  const netEl = $("#stat-monthly-net");
+  if (netEl) {
+    const net = s.monthly_total_net;
+    if (net != null && net < s.monthly_total) {
+      netEl.hidden = false;
+      netEl.querySelector("b").textContent = fmtMoney(net, base);
+    } else netEl.hidden = true;
+  }
   // v1.6.3：活跃订阅数旁提示已暂停数量（暂停数 = 列表总数 - 活跃数）
   const pausedN = (state.subs || []).length - s.active_count;
   const hint = $("#stat-paused-hint");
@@ -547,14 +556,14 @@ function renderSubs() {
       <td><div class="sub-name">${avatarHTML(s, "avatar sub-table-logo")}
         <div><div class="n">${esc(s.name)}${s.active ? "" : ` <span class="paused-tag">已暂停</span>`}</div>
         ${s.category ? `<div class="cat-tag">${esc(catLabel(s.category))}</div>` : ""}</div></div></td>
-      <td class="ta-r amount-cell">${fmtMoney(s.amount, s.currency)}
+      <td class="ta-r amount-cell">${subAmtHTML(s)}
         ${s.currency !== base && s.amount_converted != null
           ? `<small class="fx-badge" style="font-size:12px">≈ ${fmtMoney(s.amount_converted, base)}</small>` : ""}</td>
       <td>${CYCLE_LABEL[s.cycle]}</td>
       <td>${s.active
         ? `<span class="due-badge ${dueClass(s.days_until)}">${fmtDate(s.next_billing_date)} · ${dueLabel(s.days_until)}</span>`
         : `<span class="due-badge paused">已暂停</span>`}</td>
-      <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span></td>
+      <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>${(s.share_count || 0) >= 2 ? ` <span class="car-badge">拼车 ${s.share_count} 人</span>` : ""}</td>
       <td class="muted">${esc(catLabel(s.category))}</td>
       <td class="ta-r"><div class="row-actions">
         <button class="icon-btn" data-act="edit" data-id="${s.id}" title="编辑"><svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
@@ -565,7 +574,22 @@ function renderSubs() {
       </div></td>
     </tr>`).join("")
     : `<tr><td colspan="7"><div class="pending-empty">${t("noSubs")}</div></td></tr>`;
-  // 手机卡片
+/* v1.6.20 回血口径：卡片金额区——拼车显示份额价，有回收显示净额，其余显示标价 */
+function subAmtHTML(s) {
+  const share = s.share_count || 0;
+  const hasCar = share >= 2 && s.monthly_cost_share != null && s.monthly_cost_share < s.amount;
+  const hasRebate = (s.rebate_total || 0) > 0 && s.monthly_cost_net != null && s.monthly_cost_net < s.amount;
+  if (hasCar) {
+    const saved = Math.round((s.amount - s.monthly_cost_share) * 100) / 100;
+    return `${fmtMoney(s.monthly_cost_share, s.currency)}<span class="amt-sub">/期 · 标价 ${fmtMoney(s.amount, s.currency)} · 已省 ${fmtMoney(saved, s.currency)}</span>`;
+  }
+  if (hasRebate) {
+    return `${fmtMoney(Math.round((s.amount - s.rebate_total) * 100) / 100, s.currency)}<span class="amt-sub">净 · 标价 ${fmtMoney(s.amount, s.currency)} · 回收 ${fmtMoney(s.rebate_total, s.currency)}</span>`;
+  }
+  return `${fmtMoney(s.amount, s.currency)}`;
+}
+
+// 手机卡片
   $("#subs-cards").innerHTML = subs.length ? subs.map((s) => `
     <div class="sub-card ${s.active ? "" : "row-paused"}">
       ${avatarHTML(s)}
@@ -575,6 +599,7 @@ function renderSubs() {
         <div class="meta">
           <span>${CYCLE_LABEL[s.cycle]}</span>
           ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
+          ${(s.share_count || 0) >= 2 ? `<span class="car-badge">拼车 ${s.share_count} 人</span>` : ""}
           ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
         </div>
         <div class="card-actions">
@@ -586,7 +611,7 @@ function renderSubs() {
         </div>
       </div>
       <div class="right">
-        <div class="amt">${fmtMoney(s.amount, s.currency)}</div>
+        <div class="amt">${subAmtHTML(s)}</div>
         ${s.active
           ? `<span class="due-badge ${dueClass(s.days_until)} due">${dueLabel(s.days_until)}</span>
              <div class="muted small" style="margin-top:3px">${fmtDate(s.next_billing_date)}</div>`
@@ -738,6 +763,11 @@ function openModal(sub = null) {
   $("#f-category").value = sub?.category || "";
   $("#f-url").value = sub?.url || "";
   $("#f-notes").value = sub?.notes || "";
+  // v1.6.20 回血口径：拼车人数与回收记录（回收区块仅编辑模式显示）
+  $("#f-share").value = sub ? (sub.share_count || 0) : "";
+  const rblock = $("#rebate-block");
+  if (sub) { rblock.hidden = false; renderRebates(sub.id); $("#f-rebate-date").value = new Date().toISOString().slice(0, 10); }
+  else { rblock.hidden = true; $("#rebate-list").innerHTML = ""; }
   $("#btn-delete").classList.toggle("hidden", !sub);
   $("#f-logo").value = "";
   renderLogoPreview(sub);
@@ -791,6 +821,51 @@ $("#btn-sort").addEventListener("click", () => {
   renderSubs();
 });
 $("#btn-cancel").addEventListener("click", () => $("#modal-mask").classList.add("hidden"));
+
+/* ---------------- 回收记录（v1.6.20 回血口径） ---------------- */
+/* 金额展示复用 fmtMoney（符号前缀格式，44 行定义）。回收按订阅币种记账。 */
+const rebateCurrency = (subId) => (state.subs || []).find((x) => x.id === subId)?.currency || "CNY";
+
+async function renderRebates(subId) {
+  const list = $("#rebate-list");
+  try {
+    const d = await api(`/api/subscriptions/${subId}/rebates`);
+    const cur = rebateCurrency(subId);
+    list.innerHTML = d.rebates.length
+      ? d.rebates.map((r) => `
+        <div class="rebate-row">
+          <span class="rebate-date">${fmtDate(r.date)}</span>
+          <span class="rebate-note" title="${esc(r.note)}">${esc(r.note || "回收")}</span>
+          <span class="rebate-amt">-${fmtMoney(r.amount, cur)}</span>
+          <button type="button" class="icon-btn" data-rebate-del="${r.id}" title="删除"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 7h14M9 7V5h6v2m-7 0 1 13h6l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+        </div>`).join("") + `<div class="rebate-row rebate-total"><span>合计回收</span><b>${fmtMoney(d.total, cur)}</b></div>`
+      : `<div class="muted small">暂无回收记录</div>`;
+  } catch { list.innerHTML = `<div class="muted small">回收记录加载失败</div>`; }
+}
+
+$("#rebate-list").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-rebate-del]");
+  if (!btn) return;
+  const subId = parseInt($("#f-id").value, 10);
+  try {
+    await api(`/api/subscriptions/${subId}/rebates/${btn.dataset.rebateDel}`, { method: "DELETE" });
+    toast("已删除");
+    renderRebates(subId);
+  } catch (err) { if (err.message !== "unauthorized") toast("删除失败：" + err.message); }
+});
+
+$("#btn-add-rebate").addEventListener("click", async () => {
+  const subId = parseInt($("#f-id").value, 10);
+  const date = $("#f-rebate-date").value, amount = parseFloat($("#f-rebate-amount").value);
+  if (!date || !amount || amount <= 0) { toast("请填写回收日期和金额"); return; }
+  try {
+    await api(`/api/subscriptions/${subId}/rebates`,
+      { method: "POST", body: { date, amount, note: $("#f-rebate-note").value.trim() } });
+    $("#f-rebate-amount").value = ""; $("#f-rebate-note").value = "";
+    toast("回收已记入");
+    renderRebates(subId);
+  } catch (err) { if (err.message !== "unauthorized") toast("记入失败：" + err.message); }
+});
 $("#modal-mask").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) $("#modal-mask").classList.add("hidden");
 });
@@ -830,6 +905,7 @@ $("#sub-form").addEventListener("submit", async (e) => {
     notes: $("#f-notes").value,
     color: state.form.color,
     active: $("#f-active").checked ? 1 : 0,
+    share_count: Math.max(0, parseInt($("#f-share").value, 10) || 0),
   };
   try {
     let saved;

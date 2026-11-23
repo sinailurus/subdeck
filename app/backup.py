@@ -137,6 +137,11 @@ def _restore_db(db_bytes: bytes) -> dict:
             src_cols = [d[0] for d in src_cur.description]
             src_rows = src_cur.fetchall()
             src_settings = src.execute("SELECT key, value FROM settings").fetchall()
+            # v1.6.20 回收记录：老备份（schema 1）无此表 → 按快照语义清空
+            src_rebates = []
+            if "rebates" in tables:
+                src_rebates = src.execute("SELECT * FROM rebates").fetchall()
+                src_rebates = [dict(r) for r in src_rebates]
 
             from .db import db
             with db() as conn:
@@ -155,6 +160,16 @@ def _restore_db(db_bytes: bytes) -> dict:
                         "INSERT INTO settings(key, value) VALUES(?, ?) "
                         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                         (srow["key"], srow["value"]),
+                    )
+                # v1.6.20 回收记录按列交集还原，订阅 id 保留故引用关系不变
+                conn.execute("DELETE FROM rebates")
+                if src_rebates:
+                    re_cols = [r[1] for r in conn.execute("PRAGMA table_info(rebates)")]
+                    re_common = [c for c in re_cols if c in src_rebates[0].keys()]
+                    re_ph = ",".join("?" * len(re_common))
+                    conn.executemany(
+                        f"INSERT INTO rebates ({','.join(re_common)}) VALUES ({re_ph})",
+                        [[r[c] for c in re_common] for r in src_rebates],
                     )
             return {"subscriptions": len(src_rows), "settings": len(src_settings)}
         finally:
@@ -183,7 +198,7 @@ def _open_backup(data: bytes):
         manifest = json.loads(zf.read("manifest.json"))
     except json.JSONDecodeError:
         raise ValueError("manifest.json 解析失败")
-    if manifest.get("schema_version") != SCHEMA_VERSION:
+    if manifest.get("schema_version") is None or manifest.get("schema_version") > SCHEMA_VERSION:
         raise ValueError(f"备份包 schema 版本不符（{manifest.get('schema_version')}）")
     return zf, manifest
 

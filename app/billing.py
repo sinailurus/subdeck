@@ -70,6 +70,20 @@ def monthly_factor(cycle: str) -> float:
     return CYCLES[cycle][2]
 
 
+# v1.6.20 回血口径：回收金额按计费周期摊销的月数。weekly 无自然月数，按 1 个月近似。
+CYCLE_MONTHS = {
+    "weekly": 1,
+    "monthly": 1,
+    "quarterly": 3,
+    "semiannual": 6,
+    "yearly": 12,
+}
+
+
+def cycle_months(cycle: str) -> int:
+    return CYCLE_MONTHS.get(cycle, 1)
+
+
 def convert(amount: float, currency: str, base: str, rates: dict) -> float | None:
     """按缓存汇率把外币金额折算成基准币种。缺汇率时返回 None。"""
     if currency == base:

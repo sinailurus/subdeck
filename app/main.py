@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.19"
+APP_VERSION = "1.6.20-beta"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -517,6 +517,17 @@ def _validate(body: dict, partial: bool = False) -> dict:
         if cycle not in ALLOWED_CYCLES:
             raise HTTPException(status_code=400, detail="不支持的周期")
         out["cycle"] = cycle
+    # v1.6.20 回血口径：拼车分摊人数，0=不拼车；1 无意义按 0 处理
+    if not partial or "share_count" in body:
+        try:
+            share = int(body.get("share_count") or 0)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="拼车人数格式不正确")
+        if share == 1:
+            share = 0
+        if not 0 <= share <= 99:
+            raise HTTPException(status_code=400, detail="拼车人数需在 0-99 之间（1 按不拼车处理）")
+        out["share_count"] = share
     if not partial or "next_billing_date" in body:
         try:
             out["next_billing_date"] = datetime.date.fromisoformat(
@@ -571,6 +582,23 @@ def _with_rates(conn: sqlite3.Connection, sub: dict) -> dict:
         None if sub["amount_converted"] is None
         else round(sub["amount_converted"] * billing.monthly_factor(sub["cycle"]), 2)
     )
+    # v1.6.20 回血口径：拼车按人数分摊，回收按计费周期摊销冲减；单订阅净月均不低于 0
+    share = max(0, int(sub.get("share_count") or 0))
+    sub["monthly_cost_share"] = (
+        None if sub["monthly_cost"] is None
+        else round(sub["monthly_cost"] / share, 2) if share >= 2 else sub["monthly_cost"]
+    )
+    rebate_total = round(sum(
+        row["amount"] for row in conn.execute(
+            "SELECT amount FROM rebates WHERE sub_id=?", (sub["id"],))
+    ), 2)
+    sub["rebate_total"] = rebate_total
+    if sub["monthly_cost"] is not None:
+        base_monthly = sub["monthly_cost_share"] if share >= 2 else sub["monthly_cost"]
+        net = base_monthly - rebate_total / billing.cycle_months(sub["cycle"])
+        sub["monthly_cost_net"] = round(max(0.0, net), 2)
+    else:
+        sub["monthly_cost_net"] = None
     sub["logo_url"] = f"/api/logo/{sub['logo_file']}" if sub.get("logo_file") else ""
     return sub
 
@@ -608,11 +636,12 @@ def create_sub(request: Request, body: dict):
         cur = conn.execute(
             """INSERT INTO subscriptions
                (name, amount, currency, cycle, next_billing_date, payment_method,
-                category, notes, color, url, active, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                category, notes, color, url, active, share_count, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (data["name"], data["amount"], data["currency"], data["cycle"],
              data["next_billing_date"], data["payment_method"], data["category"],
-             data["notes"], data["color"], data["url"], data["active"], now, now))
+             data["notes"], data["color"], data["url"], data["active"],
+             data.get("share_count", 0), now, now))
         row = conn.execute("SELECT * FROM subscriptions WHERE id=?",
                            (cur.lastrowid,)).fetchone()
         return _with_rates(conn, billing.ensure_rolled(conn, row))
@@ -642,10 +671,74 @@ def delete_sub(request: Request, sub_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="订阅不存在")
         conn.execute("DELETE FROM subscriptions WHERE id=?", (sub_id,))
+        conn.execute("DELETE FROM rebates WHERE sub_id=?", (sub_id,))  # v1.6.20 级联清理回收记录
         if row["logo_file"]:
             path = os.path.join(LOGO_DIR, row["logo_file"])
             if os.path.isfile(path):
                 os.remove(path)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- 回收记录（v1.6.20 回血口径）
+
+def _validate_rebate(body: dict) -> dict:
+    out = {}
+    try:
+        out["date"] = datetime.date.fromisoformat(str(body.get("date"))).isoformat()
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="回收日期格式不正确")
+    try:
+        amount = round(float(body.get("amount")), 2)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="回收金额格式不正确")
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="回收金额需大于 0")
+    out["amount"] = amount
+    note = str(body.get("note") or "").strip()
+    if len(note) > 100:
+        raise HTTPException(status_code=400, detail="备注不超过 100 字")
+    out["note"] = note
+    return out
+
+
+@app.get("/api/subscriptions/{sub_id}/rebates")
+def list_rebates(request: Request, sub_id: int):
+    require_auth(request)
+    with db() as conn:
+        if not conn.execute("SELECT id FROM subscriptions WHERE id=?", (sub_id,)).fetchone():
+            raise HTTPException(status_code=404, detail="订阅不存在")
+        rows = conn.execute(
+            "SELECT id, date, amount, note FROM rebates WHERE sub_id=? ORDER BY date DESC, id DESC",
+            (sub_id,)).fetchall()
+        return {"rebates": [dict(r) for r in rows],
+                "total": round(sum(r["amount"] for r in rows), 2)}
+
+
+@app.post("/api/subscriptions/{sub_id}/rebates")
+def create_rebate(request: Request, sub_id: int, body: dict):
+    require_auth(request)
+    data = _validate_rebate(body)
+    with db() as conn:
+        if not conn.execute("SELECT id FROM subscriptions WHERE id=?", (sub_id,)).fetchone():
+            raise HTTPException(status_code=404, detail="订阅不存在")
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cur = conn.execute(
+            "INSERT INTO rebates (sub_id, date, amount, note, created_at) VALUES (?,?,?,?,?)",
+            (sub_id, data["date"], data["amount"], data["note"], now))
+        row = conn.execute("SELECT id, date, amount, note FROM rebates WHERE id=?",
+                           (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+@app.delete("/api/subscriptions/{sub_id}/rebates/{rebate_id}")
+def delete_rebate(request: Request, sub_id: int, rebate_id: int):
+    require_auth(request)
+    with db() as conn:
+        cur = conn.execute("SELECT id FROM rebates WHERE id=? AND sub_id=?",
+                           (rebate_id, sub_id)).fetchone()
+        if not cur:
+            raise HTTPException(status_code=404, detail="回收记录不存在")
+        conn.execute("DELETE FROM rebates WHERE id=?", (rebate_id,))
     return {"ok": True}
 
 
@@ -941,6 +1034,7 @@ def stats(request: Request):
         remind_days = int(get_setting(conn, "remind_days", "7") or 7)
 
         monthly_total, missing_rate = 0.0, []
+        monthly_total_net = 0.0
         by_category: dict[str, float] = {}
         pending, upcoming = [], []
         for s in subs:
@@ -948,6 +1042,9 @@ def stats(request: Request):
                 missing_rate.append(s["currency"])
                 continue
             monthly_total += s["monthly_cost"]
+            # v1.6.20 回血口径：净月均合计（拼车份额 + 回收摊销），monthly_total 保持标价口径
+            monthly_total_net += (s["monthly_cost_net"]
+                                  if s["monthly_cost_net"] is not None else s["monthly_cost"])
             cat = s["category"] or "other"
             by_category[cat] = round(by_category.get(cat, 0.0) + s["monthly_cost"], 2)
             if s["days_until"] <= remind_days:
@@ -969,6 +1066,7 @@ def stats(request: Request):
         return {
             "base_currency": base,
             "monthly_total": round(monthly_total, 2),
+            "monthly_total_net": round(monthly_total_net, 2),
             "yearly_total": round(monthly_total * 12, 2),
             "active_count": len(subs),
             "pending_count": len(pending),
