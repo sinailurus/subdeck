@@ -129,6 +129,7 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .stat-card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 14px 16px;
+  display: flex; flex-direction: column; justify-content: center;
 }
 .stat-label { font-size: 12.5px; color: var(--muted); }
 .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; word-break: break-all; }
@@ -362,7 +363,8 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .swipe-wrap { position: relative; border-radius: var(--radius); overflow: hidden; }
 .swipe-wrap .sub-card { position: relative; z-index: 1; transition: transform 0.25s ease; touch-action: pan-y; }
 .swipe-wrap.open .sub-card { transform: translateX(-216px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10); }
-.swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+.swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; opacity: 0; transition: opacity 0.15s ease; border-radius: 0 var(--radius) var(--radius) 0; overflow: hidden; }
+.swipe-wrap.dragging .swipe-actions, .swipe-wrap.open .swipe-actions { opacity: 1; }
 .swipe-btn {
   width: 72px; border: none; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;

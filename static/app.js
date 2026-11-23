@@ -726,7 +726,7 @@ function closeSwipe(except) {
     if (horizontal === null) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // 未过起步阈值，等方向明确
       horizontal = Math.abs(dx) > Math.abs(dy);
-      if (horizontal) closeSwipe(wrapEl); // 滑新的卡片时收起旧的
+      if (horizontal) { closeSwipe(wrapEl); wrapEl.classList.add("dragging"); } // 滑新的卡片时收起旧的
     }
     if (!horizontal) return; // 纵向手势交还浏览器滚动
     if (e.cancelable) e.preventDefault();
@@ -738,6 +738,7 @@ function closeSwipe(except) {
     if (!active || !wrapEl) return;
     active = false;
     cardEl.style.transition = "";
+    wrapEl.classList.remove("dragging");
     if (horizontal === null) return; // 纯点击，不产生位移
     const base = startOpen ? -SWIPE_W : 0;
     wrapEl.classList.toggle("open", base + dx < -SWIPE_W / 2);
