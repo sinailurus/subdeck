@@ -603,7 +603,7 @@ function subAmtHTML(s, compact) {
   return `${fmtMoney(s.amount, s.currency)}`;
 }
 
-// 手机卡片（左滑露出编辑/暂停/删除，卡片本体纯展示；手势判定见 initSwipe）
+  // 手机卡片（左滑露出编辑/暂停/删除，卡片本体纯展示；手势判定见 initSwipe）
   $("#subs-cards").innerHTML = subs.length ? subs.map((s) => `
     <div class="swipe-wrap">
       <div class="swipe-actions">
@@ -621,10 +621,13 @@ function subAmtHTML(s, compact) {
             <span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>
             <span>${CYCLE_LABEL[s.cycle]}</span>
             ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
-            ${(s.share_count || 0) >= 2 && s.share_mode !== "paid" ? `<span class="car-badge">拼车 ${s.share_count} 人</span>` : s.share_mode === "paid" ? `<span class="car-badge">拼车</span>` : ""}
             ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
             ${s.active ? "" : `<span class="paused-tag">已暂停</span>`}
           </div>
+          ${s.share_mode === "paid"
+            ? `<div class="badge-row"><span class="car-badge-lg">拼车 · 实付 ${fmtMoneyShort(s.share_base, s.currency)}</span></div>`
+            : s.share_mode === "split"
+              ? `<div class="badge-row"><span class="car-badge-lg">拼车 · ${s.share_count} 人均分</span></div>` : ""}
         </div>
         <div class="right">
           <div class="amt">${subAmtHTML(s, true)}</div>
@@ -702,7 +705,7 @@ document.addEventListener("click", async (e) => {
 // ---- 手机卡片左滑操作（iOS 列表同款交互） ----
 // 卡片 touch-action: pan-y 让浏览器接管垂直滚动，横向位移由这里接管：
 // 首次位移判方向，水平明显才跟进；松手超过半程吸附露出，否则回弹。
-const SWIPE_W = 216; // 三按钮总宽（72px × 3），与 CSS .swipe-btn 保持一致
+const SWIPE_W = 228; // 胶囊面板 216px（72×3）+ 右侧留缝 6px×2，与 CSS 保持一致
 function closeSwipe(except) {
   document.querySelectorAll(".swipe-wrap.open").forEach((w) => {
     if (w !== except) w.classList.remove("open");

@@ -141,8 +141,10 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .pending-empty { color: var(--muted); font-size: 13.5px; text-align: center; padding: 14px 0; }
 .pending-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.045);   /* 分层靠填充色差，不用描边（对齐 iOS 分组列表做法） */
 }
+[data-theme="dark"] .pending-item { background: rgba(255, 255, 255, 0.06); }
 .pending-when { margin-left: auto; text-align: right; flex-shrink: 0; }
 .pending-when .d { font-weight: 700; color: var(--warn); }
 .pending-when .d.soon { color: var(--danger); }
@@ -359,11 +361,20 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .sub-card .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
 .sub-card .due-row { margin-top: 5px; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
 
-/* 左滑操作（手机卡片）：色块贴在卡片背后，滑开后露出 */
+/* 左滑操作（手机卡片）：玻璃胶囊面板，与卡片留缝，滑开后露出 */
 .swipe-wrap { position: relative; border-radius: var(--radius); overflow: hidden; }
 .swipe-wrap .sub-card { position: relative; z-index: 1; transition: transform 0.25s ease; touch-action: pan-y; }
-.swipe-wrap.open .sub-card { transform: translateX(-216px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10); }
-.swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; opacity: 0; transition: opacity 0.15s ease; border-radius: 0 var(--radius) var(--radius) 0; overflow: hidden; }
+.swipe-wrap.open .sub-card { transform: translateX(-228px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10); }
+[data-theme="dark"] .swipe-wrap.open .sub-card { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45); }
+.swipe-actions {
+  position: absolute; top: 0; right: 6px; bottom: 0; display: flex;
+  opacity: 0; transition: opacity 0.15s ease;
+  border-radius: 14px; overflow: hidden;
+  backdrop-filter: blur(12px) saturate(1.15); -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+[data-theme="light"] .swipe-actions { border-color: rgba(0, 0, 0, 0.08); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }
 .swipe-wrap.dragging .swipe-actions, .swipe-wrap.open .swipe-actions { opacity: 1; }
 .swipe-btn {
   width: 72px; border: none; cursor: pointer;
@@ -371,11 +382,10 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
   color: #fff; font-size: 12px; font-weight: 500;
 }
 .swipe-btn svg { width: 20px; height: 20px; }
-.swipe-btn.edit { background: var(--accent); }
-.swipe-btn.pause { background: #ff9500; }
-.swipe-btn.del { background: var(--danger); }
-[data-theme="dark"] .swipe-wrap.open .sub-card { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45); }
-[data-theme="dark"] .swipe-btn.pause { background: #ff9f0a; }
+.swipe-btn.edit { background: color-mix(in srgb, var(--accent) 82%, transparent); }
+.swipe-btn.pause { background: color-mix(in srgb, #ff9500 82%, transparent); }
+.swipe-btn.del { background: color-mix(in srgb, var(--danger) 82%, transparent); }
+[data-theme="dark"] .swipe-btn.pause { background: color-mix(in srgb, #ff9f0a 82%, transparent); }
 
 /* ---------- Logo 头像 ---------- */
 .logo-avatar, .avatar {
@@ -771,6 +781,15 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 
 /* ---- v1.6.20 回血口径：拼车徽章 / 金额小字 / 净口径副行 / 回收记录 ---- */
 .car-badge { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 999px; padding: 1px 8px; font-size: 11.5px; white-space: nowrap; }
+/* 手机卡片：拼车状态独占一行（有没有拼车一眼可见） */
+.sub-card .badge-row { margin-top: 6px; }
+.car-badge-lg {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  font-size: 11.5px; font-weight: 500; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px; padding: 2.5px 9px;
+}
 .sub-card .amt-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; }
 .amount-cell .amt-sub { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 2px; }
 .stat-net { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; }
