@@ -319,7 +319,7 @@ function renderStats() {
     const net = s.monthly_total_net;
     if (net != null && net < s.monthly_total) {
       netEl.hidden = false;
-      netEl.querySelector("b").textContent = fmtMoney(net, base);
+      $("#stat-monthly-net-val").textContent = fmtMoney(net, base);
     } else netEl.hidden = true;
   }
   // v1.6.3：活跃订阅数旁提示已暂停数量（暂停数 = 列表总数 - 活跃数）
@@ -563,7 +563,7 @@ function renderSubs() {
       <td>${s.active
         ? `<span class="due-badge ${dueClass(s.days_until)}">${fmtDate(s.next_billing_date)} · ${dueLabel(s.days_until)}</span>`
         : `<span class="due-badge paused">已暂停</span>`}</td>
-      <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>${(s.share_count || 0) >= 2 ? ` <span class="car-badge">拼车 ${s.share_count} 人</span>` : ""}</td>
+      <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>${(s.share_count || 0) >= 2 && s.share_mode !== "paid" ? ` <span class="car-badge">拼车 ${s.share_count} 人</span>` : s.share_mode === "paid" ? ` <span class="car-badge">拼车</span>` : ""}</td>
       <td class="muted">${esc(catLabel(s.category))}</td>
       <td class="ta-r"><div class="row-actions">
         <button class="icon-btn" data-act="edit" data-id="${s.id}" title="编辑"><svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
@@ -574,14 +574,17 @@ function renderSubs() {
       </div></td>
     </tr>`).join("")
     : `<tr><td colspan="7"><div class="pending-empty">${t("noSubs")}</div></td></tr>`;
-/* v1.6.20 回血口径：卡片金额区——拼车显示份额价，有回收显示净额，其余显示标价 */
+/* v1.6.20 回血口径：卡片金额区——拼车（均分或实付）显示实际口径，有回收显示净额，其余显示标价 */
 function subAmtHTML(s) {
-  const share = s.share_count || 0;
-  const hasCar = share >= 2 && s.monthly_cost_share != null && s.monthly_cost_share < s.amount;
+  const mode = s.share_mode;
+  const hasCar = mode === "paid" || mode === "split";
   const hasRebate = (s.rebate_total || 0) > 0 && s.monthly_cost_net != null && s.monthly_cost_net < s.amount;
   if (hasCar) {
-    const saved = Math.round((s.amount - s.monthly_cost_share) * 100) / 100;
-    return `${fmtMoney(s.monthly_cost_share, s.currency)}<span class="amt-sub">/期 · 标价 ${fmtMoney(s.amount, s.currency)} · 已省 ${fmtMoney(saved, s.currency)}</span>`;
+    const saved = Math.round((s.amount - s.share_base) * 100) / 100;
+    const tag = mode === "paid" ? "实付" : "份额";
+    if (saved > 0)
+      return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${tag} · 标价 ${fmtMoney(s.amount, s.currency)} · 已省 ${fmtMoney(saved, s.currency)}</span>`;
+    return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${tag}</span>`;
   }
   if (hasRebate) {
     return `${fmtMoney(Math.round((s.amount - s.rebate_total) * 100) / 100, s.currency)}<span class="amt-sub">净 · 标价 ${fmtMoney(s.amount, s.currency)} · 回收 ${fmtMoney(s.rebate_total, s.currency)}</span>`;
@@ -599,7 +602,7 @@ function subAmtHTML(s) {
         <div class="meta">
           <span>${CYCLE_LABEL[s.cycle]}</span>
           ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
-          ${(s.share_count || 0) >= 2 ? `<span class="car-badge">拼车 ${s.share_count} 人</span>` : ""}
+          ${(s.share_count || 0) >= 2 && s.share_mode !== "paid" ? `<span class="car-badge">拼车 ${s.share_count} 人</span>` : s.share_mode === "paid" ? `<span class="car-badge">拼车</span>` : ""}
           ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
         </div>
         <div class="card-actions">
@@ -765,6 +768,7 @@ function openModal(sub = null) {
   $("#f-notes").value = sub?.notes || "";
   // v1.6.20 回血口径：拼车人数与回收记录（回收区块仅编辑模式显示）
   $("#f-share").value = sub ? (sub.share_count || 0) : "";
+  $("#f-mypaid").value = sub && sub.my_paid ? sub.my_paid : "";
   const rblock = $("#rebate-block");
   if (sub) { rblock.hidden = false; renderRebates(sub.id); $("#f-rebate-date").value = new Date().toISOString().slice(0, 10); }
   else { rblock.hidden = true; $("#rebate-list").innerHTML = ""; }
@@ -906,6 +910,7 @@ $("#sub-form").addEventListener("submit", async (e) => {
     color: state.form.color,
     active: $("#f-active").checked ? 1 : 0,
     share_count: Math.max(0, parseInt($("#f-share").value, 10) || 0),
+    my_paid: Math.max(0, parseFloat($("#f-mypaid").value) || 0),
   };
   try {
     let saved;

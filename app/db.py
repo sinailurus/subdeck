@@ -67,6 +67,11 @@ def init_db() -> None:
             conn.execute(
                 "ALTER TABLE subscriptions ADD COLUMN share_count INTEGER NOT NULL DEFAULT 0"
             )
+        if "my_paid" not in cols:
+            # 我的实付金额（每期，按订阅币种）：拼车成员金额不等时直接指定，优先于人数均分
+            conn.execute(
+                "ALTER TABLE subscriptions ADD COLUMN my_paid REAL NOT NULL DEFAULT 0"
+            )
         # 默认设置
         conn.executemany(
             "INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",

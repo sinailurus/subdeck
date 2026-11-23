@@ -63,3 +63,12 @@ print("OK 拼车人数 100 400")
 call("DELETE", f"/api/subscriptions/{s['id']}", None, C)
 call("DELETE", f"/api/subscriptions/{s4['id']}", None, C)
 print("回血口径 e2e 全部通过")
+
+# ---- beta.2 不等分实付（my_paid 优先于人数均分） ----
+s5, _ = call("POST", "/api/subscriptions", {"name":"不等分测试","amount":600,"currency":"CNY","cycle":"yearly","next_billing_date":"2027-01-01","payment_method":"manual","share_count":3,"my_paid":540}, C)
+ok("实付 540 覆盖人数均分", s5["share_mode"] == "paid" and s5["share_base"] == 540.0)
+ok("实付月均 45（540/12）", s5["monthly_cost_share"] == 45.0 and s5["monthly_cost_net"] == 45.0)
+s6, _ = call("PUT", f"/api/subscriptions/{s5['id']}", {"my_paid":0}, C)
+ok("实付清零回退人数均分 200", s6["share_mode"] == "split" and s6["share_base"] == 200.0)
+call("DELETE", f"/api/subscriptions/{s5['id']}", None, C)
+print("不等分实付用例通过")

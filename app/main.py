@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.20-beta"
+APP_VERSION = "1.6.20-beta.2"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -528,6 +528,15 @@ def _validate(body: dict, partial: bool = False) -> dict:
         if not 0 <= share <= 99:
             raise HTTPException(status_code=400, detail="拼车人数需在 0-99 之间（1 按不拼车处理）")
         out["share_count"] = share
+    # v1.6.20-beta.2 不等分拼车：我的实付金额（每期，订阅币种），优先于人数均分
+    if not partial or "my_paid" in body:
+        try:
+            my_paid = round(float(body.get("my_paid") or 0), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="实付金额格式不正确")
+        if my_paid < 0:
+            raise HTTPException(status_code=400, detail="实付金额不能为负")
+        out["my_paid"] = my_paid
     if not partial or "next_billing_date" in body:
         try:
             out["next_billing_date"] = datetime.date.fromisoformat(
@@ -582,20 +591,29 @@ def _with_rates(conn: sqlite3.Connection, sub: dict) -> dict:
         None if sub["amount_converted"] is None
         else round(sub["amount_converted"] * billing.monthly_factor(sub["cycle"]), 2)
     )
-    # v1.6.20 回血口径：拼车按人数分摊，回收按计费周期摊销冲减；单订阅净月均不低于 0
+    # v1.6.20 回血口径：拼车按人数均分，v1.6.20-beta.2 起支持不等分实付（my_paid 优先）；
+    # 回收按计费周期摊销冲减；单订阅净月均不低于 0
     share = max(0, int(sub.get("share_count") or 0))
+    my_paid = round(float(sub.get("my_paid") or 0), 2)
+    if my_paid > 0:
+        share_base, mode = my_paid, "paid"            # 每期实付（订阅币种）
+    elif share >= 2:
+        share_base, mode = round(sub["amount"] / share, 2), "split"
+    else:
+        share_base, mode = sub["amount"], None
+    sub["share_base"], sub["share_mode"] = share_base, mode
+    conv_base = billing.convert(share_base, sub["currency"], base, merged)
     sub["monthly_cost_share"] = (
-        None if sub["monthly_cost"] is None
-        else round(sub["monthly_cost"] / share, 2) if share >= 2 else sub["monthly_cost"]
+        None if conv_base is None
+        else round(conv_base * billing.monthly_factor(sub["cycle"]), 2)
     )
     rebate_total = round(sum(
         row["amount"] for row in conn.execute(
             "SELECT amount FROM rebates WHERE sub_id=?", (sub["id"],))
     ), 2)
     sub["rebate_total"] = rebate_total
-    if sub["monthly_cost"] is not None:
-        base_monthly = sub["monthly_cost_share"] if share >= 2 else sub["monthly_cost"]
-        net = base_monthly - rebate_total / billing.cycle_months(sub["cycle"])
+    if sub["monthly_cost_share"] is not None:
+        net = sub["monthly_cost_share"] - rebate_total / billing.cycle_months(sub["cycle"])
         sub["monthly_cost_net"] = round(max(0.0, net), 2)
     else:
         sub["monthly_cost_net"] = None
@@ -636,12 +654,12 @@ def create_sub(request: Request, body: dict):
         cur = conn.execute(
             """INSERT INTO subscriptions
                (name, amount, currency, cycle, next_billing_date, payment_method,
-                category, notes, color, url, active, share_count, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                category, notes, color, url, active, share_count, my_paid, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (data["name"], data["amount"], data["currency"], data["cycle"],
              data["next_billing_date"], data["payment_method"], data["category"],
              data["notes"], data["color"], data["url"], data["active"],
-             data.get("share_count", 0), now, now))
+             data.get("share_count", 0), data.get("my_paid", 0), now, now))
         row = conn.execute("SELECT * FROM subscriptions WHERE id=?",
                            (cur.lastrowid,)).fetchone()
         return _with_rates(conn, billing.ensure_rolled(conn, row))
