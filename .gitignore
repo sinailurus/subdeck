@@ -20,3 +20,4 @@ subdeck.ini
 ugreen/subdeck-app/build_dir/
 ugreen/subdeck-app/rootfs_amd64/
 ugreen/subdeck-app/rootfs_arm64/
+demo/dist/
