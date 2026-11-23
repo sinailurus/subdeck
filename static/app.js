@@ -321,12 +321,17 @@ function renderStats() {
   $("#stat-yearly").textContent = fmtMoney(s.yearly_total, base);
   $("#stat-count").textContent = s.active_count;
   // v1.6.20 回血口径：有拼车/回收时，月均支出卡加净口径副行
+  // v1.6.20-beta.7：副行附回收冲减标注，让「回收的钱去了哪」在概览可见
   const netEl = $("#stat-monthly-net");
   if (netEl) {
     const net = s.monthly_total_net;
     if (net != null && net < s.monthly_total) {
       netEl.hidden = false;
       $("#stat-monthly-net-val").textContent = fmtMoney(net, base);
+      const rbEl = $("#stat-monthly-net-rebate");
+      const rb = s.monthly_rebate || 0;
+      if (rb > 0) { rbEl.textContent = `回收 −${fmtMoney(rb, base)}/月`; rbEl.style.display = ""; }
+      else rbEl.style.display = "none";
     } else netEl.hidden = true;
   }
   // v1.6.3：活跃订阅数旁提示已暂停数量（暂停数 = 列表总数 - 活跃数）
@@ -570,7 +575,7 @@ function renderSubs() {
       <td>${s.active
         ? `<span class="due-badge ${dueClass(s.days_until)}">${fmtDate(s.next_billing_date)} · ${dueLabel(s.days_until)}</span>`
         : `<span class="due-badge paused">已暂停</span>`}</td>
-      <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>${(s.share_count || 0) >= 2 && s.share_mode !== "paid" ? ` <span class="car-badge">拼车 ${s.share_count} 人</span>` : s.share_mode === "paid" ? ` <span class="car-badge">拼车</span>` : ""}</td>
+      <td><span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>${carBadgeHTML(s) ? ` <span class="car-badge">${carBadgeHTML(s)}</span>` : ""}</td>
       <td class="muted">${esc(catLabel(s.category))}</td>
       <td class="ta-r"><div class="row-actions">
         <button class="icon-btn" data-act="edit" data-id="${s.id}" title="编辑"><svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
@@ -581,26 +586,35 @@ function renderSubs() {
       </div></td>
     </tr>`).join("")
     : `<tr><td colspan="7"><div class="pending-empty">${t("noSubs")}</div></td></tr>`;
-/* v1.6.20 回血口径：卡片金额区——拼车（均分或实付）显示实际口径，有回收显示净额，其余显示标价 */
+/* v1.6.20-beta.7 数字三分法（全卡型统一，卡片与表格同口径）：
+   主数字 = 最终净支出（实付 − 回收，下限 0；无回收时 = 实付/标价）
+   小字  = 主数字的来源算式：有回收「实付/标价 X · 回收 Y」（回收段绿色）；无回收「标价 X」（表格再带省）
+   省额  = 拼车胶囊（carBadgeHTML），手机独立行 / 表格徽章共用 */
 function subAmtHTML(s, compact) {
-  // compact（手机卡片）：小字省略「实付/份额」口径前缀（meta 行拼车徽章已表达），给名称行让位
+  const f = compact ? fmtMoneyShort : fmtMoney;
   const mode = s.share_mode;
   const hasCar = mode === "paid" || mode === "split";
-  const hasRebate = (s.rebate_total || 0) > 0 && s.monthly_cost_net != null && s.monthly_cost_net < s.amount;
-  if (hasCar) {
-    const saved = Math.round((s.amount - s.share_base) * 100) / 100;
-    const tag = compact ? "" : (mode === "paid" ? "实付 · " : "份额 · ");
-    if (saved > 0) {
-      const f = compact ? fmtMoneyShort : fmtMoney;
-      return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${tag}标价 ${f(s.amount, s.currency)} · 省 ${f(saved, s.currency)}</span>`;
-    }
-    return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${compact ? "拼车" : (mode === "paid" ? "实付" : "份额")}</span>`;
+  const paid = hasCar ? s.share_base : s.amount;
+  const rebate = Math.round((s.rebate_total || 0) * 100) / 100;
+  if (rebate <= 0) {
+    const saved = Math.round((s.amount - paid) * 100) / 100;
+    const sub = saved > 0
+      ? `<span class="amt-sub">标价 ${f(s.amount, s.currency)}${compact ? "" : ` · 省 ${f(saved, s.currency)}`}</span>`
+      : "";
+    return `${fmtMoney(paid, s.currency)}${sub}`;
   }
-  if (hasRebate) {
-    const f = compact ? fmtMoneyShort : fmtMoney;
-    return `${fmtMoney(Math.round((s.amount - s.rebate_total) * 100) / 100, s.currency)}<span class="amt-sub">${compact ? "" : "净 · "}标价 ${f(s.amount, s.currency)} · 回收 ${f(s.rebate_total, s.currency)}</span>`;
-  }
-  return `${fmtMoney(s.amount, s.currency)}`;
+  const net = Math.round(Math.max(0, paid - rebate) * 100) / 100;
+  const first = hasCar ? "实付" : "标价";
+  return `${fmtMoney(net, s.currency)}<span class="amt-sub">${first} ${f(paid, s.currency)} · <span class="amt-rebate">回收 ${f(rebate, s.currency)}</span></span>`;
+}
+
+/* v1.6.20-beta.7 拼车胶囊：状态 + 省额一个胶囊说完（手机独立行 / 表格徽章共用） */
+function carBadgeHTML(s) {
+  const mode = s.share_mode;
+  if (mode !== "paid" && mode !== "split") return "";
+  const saved = Math.round((s.amount - s.share_base) * 100) / 100;
+  const who = mode === "paid" ? "拼车" : `拼车 ${s.share_count} 人`;
+  return saved > 0 ? `${who} · 省 ${fmtMoneyShort(saved, s.currency)}` : who;
 }
 
   // 手机卡片（左滑露出编辑/暂停/删除，卡片本体纯展示；手势判定见 initSwipe）
@@ -624,10 +638,7 @@ function subAmtHTML(s, compact) {
             ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
             ${s.active ? "" : `<span class="paused-tag">已暂停</span>`}
           </div>
-          ${s.share_mode === "paid"
-            ? `<div class="badge-row"><span class="car-badge-lg">拼车 · 实付 ${fmtMoneyShort(s.share_base, s.currency)}</span></div>`
-            : s.share_mode === "split"
-              ? `<div class="badge-row"><span class="car-badge-lg">拼车 · ${s.share_count} 人均分</span></div>` : ""}
+          ${carBadgeHTML(s) ? `<div class="badge-row"><span class="car-badge-lg">${carBadgeHTML(s)}</span></div>` : ""}
         </div>
         <div class="right">
           <div class="amt">${subAmtHTML(s, true)}</div>

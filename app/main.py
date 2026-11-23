@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.20-beta.6"
+APP_VERSION = "1.6.20-beta.7"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -617,6 +617,12 @@ def _with_rates(conn: sqlite3.Connection, sub: dict) -> dict:
         sub["monthly_cost_net"] = round(max(0.0, net), 2)
     else:
         sub["monthly_cost_net"] = None
+    # v1.6.20-beta.7：回收摊销的月均冲减（基准币），供概览副行标注回收去向
+    rebate_conv = billing.convert(rebate_total, sub["currency"], base, merged)
+    sub["monthly_rebate"] = (
+        None if rebate_conv is None
+        else round(rebate_conv / billing.cycle_months(sub["cycle"]), 2)
+    )
     sub["logo_url"] = f"/api/logo/{sub['logo_file']}" if sub.get("logo_file") else ""
     return sub
 
@@ -1053,6 +1059,7 @@ def stats(request: Request):
 
         monthly_total, missing_rate = 0.0, []
         monthly_total_net = 0.0
+        monthly_rebate_sum = 0.0
         by_category: dict[str, float] = {}
         pending, upcoming = [], []
         for s in subs:
@@ -1063,6 +1070,9 @@ def stats(request: Request):
             # v1.6.20 回血口径：净月均合计（拼车份额 + 回收摊销），monthly_total 保持标价口径
             monthly_total_net += (s["monthly_cost_net"]
                                   if s["monthly_cost_net"] is not None else s["monthly_cost"])
+            # v1.6.20-beta.7：月均回收冲减合计，供概览副行标注
+            if s["monthly_rebate"]:
+                monthly_rebate_sum += s["monthly_rebate"]
             cat = s["category"] or "other"
             by_category[cat] = round(by_category.get(cat, 0.0) + s["monthly_cost"], 2)
             if s["days_until"] <= remind_days:
@@ -1085,6 +1095,7 @@ def stats(request: Request):
             "base_currency": base,
             "monthly_total": round(monthly_total, 2),
             "monthly_total_net": round(monthly_total_net, 2),
+            "monthly_rebate": round(monthly_rebate_sum, 2),
             "yearly_total": round(monthly_total * 12, 2),
             "active_count": len(subs),
             "pending_count": len(pending),

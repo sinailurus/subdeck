@@ -51,7 +51,7 @@
     <!-- 概览 -->
     <section id="view-dashboard" class="view">
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-label">月均支出</div><div class="stat-value" id="stat-monthly">--</div><div class="stat-net" id="stat-monthly-net" hidden title="扣除拼车分摊与回收后的月均成本"><span>净成本</span><b id="stat-monthly-net-val"></b></div></div>
+        <div class="stat-card"><div class="stat-label">月均支出</div><div class="stat-value" id="stat-monthly">--</div><div class="stat-net" id="stat-monthly-net" hidden title="扣除拼车分摊与回收后的月均成本；回收按计费周期摊销冲减"><span>净成本</span><b id="stat-monthly-net-val"></b><span class="net-rebate" id="stat-monthly-net-rebate" style="display:none;"></span></div></div>
         <div class="stat-card"><div class="stat-label">年度支出</div><div class="stat-value" id="stat-yearly">--</div></div>
         <div class="stat-card clickable" id="stat-active-card" title="点按查看活跃订阅"><div class="stat-label">活跃订阅</div><div class="stat-value" id="stat-count">--</div><div class="muted small" id="stat-paused-hint" style="display:none;" title="点按查看已暂停订阅"></div></div>
         <div class="stat-card" id="stat-pending-card"><div class="stat-label">即将扣费</div><div class="stat-value" id="stat-pending">--</div></div>
@@ -497,6 +497,7 @@
       </div>
       <div class="form-row span-2" id="rebate-block" hidden>
         <label>回收记录</label>
+        <p class="muted small" style="margin:2px 0 6px;">回收金额按计费周期摊销，冲减月均支出，并直接扣减订阅卡片上的金额。</p>
         <div id="rebate-list"></div>
         <div class="rebate-add">
           <input id="f-rebate-date" type="date">
