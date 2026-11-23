@@ -1,8 +1,10 @@
 # SubDeck · 订阅管理
 
+中文 ｜ [English](README.en.md)
+
 一个自部署的订阅管理工具：记录你的各种会员 / 订阅 / 定期账单，自动滚动扣费日，到期提醒，多币种实时汇率折算，按周 / 月 / 年统计花费。
 
-> **AIGC 声明**：本项目通过 AI 辅助（Vibe Coding）方式开发，由人类主导需求设计、功能取舍、代码审查与测试验证。
+> **AIGC 声明**：本项目在开发过程中使用了 AI 辅助。
 >
 > **文档**：[用户协议（TERMS.md）](TERMS.md) ｜ [隐私政策](static/privacy-policy.html)（应用内部署后可通过 `http://NAS_IP:8300/assets/privacy-policy.html` 访问）
 
@@ -22,33 +24,6 @@
 - 📱 **响应式适配**：桌面端表格 + 顶栏导航，手机/平板卡片 + 底部导航，支持"添加到主屏幕"（PWA）
 - 🔒 **可选密码保护**：一行环境变量开启；HMAC 签名 Cookie + 登录限速防暴力破解；纯内网使用可不开启
 - 🐳 **单容器部署**：SQLite 存储，无外部依赖，数据备份 = 拷贝一个目录
-
-## 界面预览
-
-**桌面端 · 订阅列表**
-
-<p align="center">
-  <img src="docs/screenshots/desktop-subscriptions.jpg" width="49%" alt="订阅列表（浅色模式）">
-  <img src="docs/screenshots/desktop-subscriptions-dark.jpg" width="49%" alt="订阅列表（深色模式）">
-</p>
-
-**桌面端 · 支出概览**
-
-<p align="center">
-  <img src="docs/screenshots/desktop-dashboard.jpg" width="49%" alt="支出概览（浅色模式）">
-  <img src="docs/screenshots/desktop-dashboard-dark.jpg" width="49%" alt="支出概览（深色模式）">
-</p>
-
-**手机端（卡片布局 + 底部导航）**
-
-<p align="center">
-  <img src="docs/screenshots/mobile-subscriptions.jpg" width="23%" alt="订阅列表（浅色模式）">
-  <img src="docs/screenshots/mobile-subscriptions-dark.jpg" width="23%" alt="订阅列表（深色模式）">
-  <img src="docs/screenshots/mobile-dashboard.jpg" width="23%" alt="支出概览（浅色模式）">
-  <img src="docs/screenshots/mobile-dashboard-dark.jpg" width="23%" alt="支出概览（深色模式）">
-</p>
-
-> 截图中的第三方服务名称与标志（Netflix、爱奇艺、iCloud、Microsoft、Photoshop 等）仅用于演示界面效果，订阅与金额均为虚构数据；相关商标归各自权利人所有，本项目与对应服务商无任何关联。
 
 ## 快速开始
 
@@ -89,7 +64,7 @@ docker compose up -d        # 默认使用 8300 端口
 
 访问 `http://NAS_IP:8300`。
 
-> **NAS 权限提示（绿联 / 群晖等必读）**：请保持 compose 中的 `user: "0:0"`。Docker 自建部署时，程序入口脚本会先用 root 自动修复 `/data` 目录属主（治 bind-mount 权限不匹配），再降权为普通用户运行服务进程。绿联 UGOS Pro 应用包（.upk）内则通过 `RUN_AS_ROOT=1` 让服务进程直接以 root 运行：UGOS 向导创建的数据文件夹是「权限位 000 + ACL 白名单」模型，且会在容器重建时重刷策略，降权用户无法稳定写入（v1.6.18 真机实测确认）。若容器以非 root 启动而数据目录属主不符，会报 `PermissionError: '/data/logos'` 并反复重启。
+> **NAS 权限提示（绿联 / 群晖等必读）**：请保持 compose 中的 `user: "0:0"`。Docker 自建部署时，程序入口脚本会先用 root 自动修复 `/data` 目录属主（解决 bind-mount 权限不匹配），再降权为普通用户运行服务进程。绿联 UGOS Pro 应用包（.upk）内则通过 `RUN_AS_ROOT=1` 让服务进程直接以 root 运行：UGOS 向导创建的数据文件夹是「权限位 000 + ACL 白名单」模型，且会在容器重建时重刷策略，降权用户无法稳定写入（v1.6.18 真机实测确认）。若容器以非 root 启动而数据目录属主不符，会报 `PermissionError: '/data/logos'` 并反复重启。
 
 ### 绿联 UGOS（Docker「项目」部署）
 
@@ -261,5 +236,3 @@ python3 tests/e2e.py
 ## 免责声明
 
 本项目按"现状"提供，仅供个人订阅记录管理使用。扣费日与金额以各服务商实际账单为准，因依赖本工具数据导致的漏付 / 错付，作者不承担责任。
-
-界面预览截图中的第三方品牌名称与标志仅作界面演示之用，所涉订阅信息均为虚构数据；相关商标与版权归各自权利人所有，本项目与对应服务商不存在任何关联、授权或合作关系。
