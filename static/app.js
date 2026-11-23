@@ -42,6 +42,13 @@ const sym = (c) => SYMBOL[c] || c + " ";
 /* ---------------- 工具 ---------------- */
 const $ = (sel) => document.querySelector(sel);
 const fmtMoney = (v, cur) => `${sym(cur)}${Number(v).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// 整数金额省略 .00（仅手机卡片小字行用，缩短宽度给名称行让位）
+const fmtMoneyShort = (v, cur) => {
+  const n = Number(v);
+  return Number.isInteger(n)
+    ? `${sym(cur)}${n.toLocaleString("zh-CN")}`
+    : fmtMoney(n, cur);
+};
 const fmtDate = (iso) => { const d = new Date(iso + "T00:00:00"); return `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, "0")}`; };
 const dueLabel = (n) => n === 0 ? t("today") : n === 1 ? t("tomorrow") : t("daysLater", n);
 const dueClass = (n) => n <= 1 ? "due-soon" : n <= 3 ? "due-warn" : "due-ok";
@@ -575,50 +582,56 @@ function renderSubs() {
     </tr>`).join("")
     : `<tr><td colspan="7"><div class="pending-empty">${t("noSubs")}</div></td></tr>`;
 /* v1.6.20 回血口径：卡片金额区——拼车（均分或实付）显示实际口径，有回收显示净额，其余显示标价 */
-function subAmtHTML(s) {
+function subAmtHTML(s, compact) {
+  // compact（手机卡片）：小字省略「实付/份额」口径前缀（meta 行拼车徽章已表达），给名称行让位
   const mode = s.share_mode;
   const hasCar = mode === "paid" || mode === "split";
   const hasRebate = (s.rebate_total || 0) > 0 && s.monthly_cost_net != null && s.monthly_cost_net < s.amount;
   if (hasCar) {
     const saved = Math.round((s.amount - s.share_base) * 100) / 100;
-    const tag = mode === "paid" ? "实付" : "份额";
-    if (saved > 0)
-      return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${tag} · 标价 ${fmtMoney(s.amount, s.currency)} · 已省 ${fmtMoney(saved, s.currency)}</span>`;
-    return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${tag}</span>`;
+    const tag = compact ? "" : (mode === "paid" ? "实付 · " : "份额 · ");
+    if (saved > 0) {
+      const f = compact ? fmtMoneyShort : fmtMoney;
+      return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${tag}标价 ${f(s.amount, s.currency)} · 省 ${f(saved, s.currency)}</span>`;
+    }
+    return `${fmtMoney(s.share_base, s.currency)}<span class="amt-sub">${compact ? "拼车" : (mode === "paid" ? "实付" : "份额")}</span>`;
   }
   if (hasRebate) {
-    return `${fmtMoney(Math.round((s.amount - s.rebate_total) * 100) / 100, s.currency)}<span class="amt-sub">净 · 标价 ${fmtMoney(s.amount, s.currency)} · 回收 ${fmtMoney(s.rebate_total, s.currency)}</span>`;
+    const f = compact ? fmtMoneyShort : fmtMoney;
+    return `${fmtMoney(Math.round((s.amount - s.rebate_total) * 100) / 100, s.currency)}<span class="amt-sub">${compact ? "" : "净 · "}标价 ${f(s.amount, s.currency)} · 回收 ${f(s.rebate_total, s.currency)}</span>`;
   }
   return `${fmtMoney(s.amount, s.currency)}`;
 }
 
-// 手机卡片
+// 手机卡片（左滑露出编辑/暂停/删除，卡片本体纯展示；手势判定见 initSwipe）
   $("#subs-cards").innerHTML = subs.length ? subs.map((s) => `
-    <div class="sub-card ${s.active ? "" : "row-paused"}">
-      ${avatarHTML(s)}
-      <div class="mid">
-        <div class="n">${esc(s.name)}
-          <span class="pay-tag pay-${s.payment_method}" style="font-size:11.5px">${s.payment_method === "auto" ? "自动" : "手动"}</span>${s.active ? "" : ` <span class="paused-tag">已暂停</span>`}</div>
-        <div class="meta">
-          <span>${CYCLE_LABEL[s.cycle]}</span>
-          ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
-          ${(s.share_count || 0) >= 2 && s.share_mode !== "paid" ? `<span class="car-badge">拼车 ${s.share_count} 人</span>` : s.share_mode === "paid" ? `<span class="car-badge">拼车</span>` : ""}
-          ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
-        </div>
-        <div class="card-actions">
-          <button class="icon-btn" data-act="edit" data-id="${s.id}"><svg viewBox="0 0 24 24" width="15" height="15"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
-          ${s.active
-            ? `<button class="icon-btn" data-act="pause" data-id="${s.id}" title="暂停"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>`
-            : `<button class="icon-btn" data-act="resume" data-id="${s.id}" title="恢复"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M7 4.5v15l13-7.5Z" fill="currentColor"/></svg></button>`}
-          <button class="icon-btn" data-act="del" data-id="${s.id}"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        </div>
-      </div>
-      <div class="right">
-        <div class="amt">${subAmtHTML(s)}</div>
+    <div class="swipe-wrap">
+      <div class="swipe-actions">
+        <button class="swipe-btn edit" data-act="edit" data-id="${s.id}"><svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>编辑</span></button>
         ${s.active
-          ? `<span class="due-badge ${dueClass(s.days_until)} due">${dueLabel(s.days_until)}</span>
-             <div class="muted small" style="margin-top:3px">${fmtDate(s.next_billing_date)}</div>`
-          : `<span class="due-badge paused due">已暂停</span>`}
+          ? `<button class="swipe-btn pause" data-act="pause" data-id="${s.id}"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span>暂停</span></button>`
+          : `<button class="swipe-btn pause" data-act="resume" data-id="${s.id}"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5Z" fill="currentColor"/></svg><span>恢复</span></button>`}
+        <button class="swipe-btn del" data-act="del" data-id="${s.id}"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>删除</span></button>
+      </div>
+      <div class="sub-card ${s.active ? "" : "row-paused"}">
+        ${avatarHTML(s)}
+        <div class="mid">
+          <div class="n">${esc(s.name)}</div>
+          <div class="meta">
+            <span class="pay-tag pay-${s.payment_method}">${s.payment_method === "auto" ? "自动" : "手动"}</span>
+            <span>${CYCLE_LABEL[s.cycle]}</span>
+            ${s.category ? `<span>${esc(catLabel(s.category))}</span>` : ""}
+            ${(s.share_count || 0) >= 2 && s.share_mode !== "paid" ? `<span class="car-badge">拼车 ${s.share_count} 人</span>` : s.share_mode === "paid" ? `<span class="car-badge">拼车</span>` : ""}
+            ${s.currency !== base && s.amount_converted != null ? `<span class="fx-badge">≈ ${fmtMoney(s.amount_converted, base)}/期</span>` : ""}
+            ${s.active ? "" : `<span class="paused-tag">已暂停</span>`}
+          </div>
+        </div>
+        <div class="right">
+          <div class="amt">${subAmtHTML(s, true)}</div>
+          ${s.active
+            ? `<div class="due-row"><span class="due-badge ${dueClass(s.days_until)}">${dueLabel(s.days_until)}</span><span class="muted small">${fmtDate(s.next_billing_date)}</span></div>`
+            : `<div class="due-row"><span class="due-badge paused">已暂停</span></div>`}
+        </div>
       </div>
     </div>`).join("")
     : `<div class="panel"><div class="pending-empty">${t("noSubs")}</div></div>`;
@@ -685,6 +698,57 @@ document.addEventListener("click", async (e) => {
     await refreshData(); renderAll();
   }
 });
+
+// ---- 手机卡片左滑操作（iOS 列表同款交互） ----
+// 卡片 touch-action: pan-y 让浏览器接管垂直滚动，横向位移由这里接管：
+// 首次位移判方向，水平明显才跟进；松手超过半程吸附露出，否则回弹。
+const SWIPE_W = 216; // 三按钮总宽（72px × 3），与 CSS .swipe-btn 保持一致
+function closeSwipe(except) {
+  document.querySelectorAll(".swipe-wrap.open").forEach((w) => {
+    if (w !== except) w.classList.remove("open");
+  });
+}
+(function initSwipe() {
+  let sx = 0, sy = 0, dx = 0, wrapEl = null, cardEl = null, horizontal = null, startOpen = false, active = false;
+  document.addEventListener("touchstart", (e) => {
+    const w = e.target.closest(".swipe-wrap");
+    if (!w) return;
+    wrapEl = w; cardEl = w.querySelector(".sub-card");
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    dx = 0; horizontal = null; active = true;
+    startOpen = w.classList.contains("open");
+    cardEl.style.transition = "none";
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!active || !wrapEl) return;
+    dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if (horizontal === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // 未过起步阈值，等方向明确
+      horizontal = Math.abs(dx) > Math.abs(dy);
+      if (horizontal) closeSwipe(wrapEl); // 滑新的卡片时收起旧的
+    }
+    if (!horizontal) return; // 纵向手势交还浏览器滚动
+    if (e.cancelable) e.preventDefault();
+    const base = startOpen ? -SWIPE_W : 0;
+    const x = Math.min(0, Math.max(-SWIPE_W, base + dx));
+    cardEl.style.transform = `translateX(${x}px)`;
+  }, { passive: false });
+  document.addEventListener("touchend", () => {
+    if (!active || !wrapEl) return;
+    active = false;
+    cardEl.style.transition = "";
+    if (horizontal === null) return; // 纯点击，不产生位移
+    const base = startOpen ? -SWIPE_W : 0;
+    wrapEl.classList.toggle("open", base + dx < -SWIPE_W / 2);
+    cardEl.style.transform = "";
+    horizontal = null;
+  });
+  // 点其它区域收回（capture 阶段，先于按钮委托执行）
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".swipe-wrap")) closeSwipe();
+  }, true);
+})();
 
 $("#search-input").addEventListener("input", (e) => {
   state.search = e.target.value; reloadSubs();
