@@ -914,15 +914,30 @@ async function renderRebates(subId) {
   try {
     const d = await api(`/api/subscriptions/${subId}/rebates`);
     const cur = rebateCurrency(subId);
-    list.innerHTML = d.rebates.length
-      ? d.rebates.map((r) => `
-        <div class="rebate-row">
-          <span class="rebate-date">${fmtDate(r.date)}</span>
-          <span class="rebate-note" title="${esc(r.note)}">${esc(r.note || "回收")}</span>
-          <span class="rebate-amt">-${fmtMoney(r.amount, cur)}</span>
-          <button type="button" class="icon-btn" data-rebate-del="${r.id}" title="删除"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 7h14M9 7V5h6v2m-7 0 1 13h6l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
-        </div>`).join("") + `<div class="rebate-row rebate-total"><span>合计回收</span><b>${fmtMoney(d.total, cur)}</b></div>`
-      : `<div class="muted small">暂无回收记录</div>`;
+    if (!d.rebates.length) { list.innerHTML = `<div class="muted small">暂无回收记录</div>`; return; }
+    // v1.6.20-beta.8 周期归属：本周期参与扣减，往期折叠为汇总条（对齐银行对账单的当前期明细化 + 历史收起模式）
+    const row = (r, past) => `
+      <div class="rebate-row${past ? " rebate-past" : ""}">
+        <span class="rebate-date">${fmtDate(r.date)}</span>
+        <span class="rebate-note" title="${esc(r.note)}">${esc(r.note || "回收")}${past ? `<em class="rebate-flag">上一周期</em>` : ""}</span>
+        <span class="rebate-amt">-${fmtMoney(r.amount, cur)}</span>
+        <button type="button" class="icon-btn" data-rebate-del="${r.id}" title="删除"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 7h14M9 7V5h6v2m-7 0 1 13h6l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+      </div>`;
+    const curRows = d.rebates.filter((r) => r.in_current_cycle);
+    const pastRows = d.rebates.filter((r) => !r.in_current_cycle);
+    let html = `<div class="rebate-group-label">本周期</div>`;
+    html += curRows.length
+      ? curRows.map((r) => row(r, false)).join("")
+        + `<div class="rebate-row rebate-total"><span>本周期合计</span><b>${fmtMoney(d.total, cur)}</b></div>`
+      : `<div class="muted small" style="padding:4px 0;">本周期暂无回收</div>`;
+    if (pastRows.length) {
+      html += `
+      <details class="rebate-fold">
+        <summary>往期回收 ${pastRows.length} 笔 · 合计 ${fmtMoney(d.past_total, cur)}<span class="fold-arrow" aria-hidden="true"></span></summary>
+        ${pastRows.map((r) => row(r, true)).join("")}
+      </details>`;
+    }
+    list.innerHTML = html;
   } catch { list.innerHTML = `<div class="muted small">回收记录加载失败</div>`; }
 }
 

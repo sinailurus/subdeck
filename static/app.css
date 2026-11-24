@@ -811,5 +811,16 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 .rebate-row .icon-btn { flex: none; }
 .rebate-row.rebate-total { background: color-mix(in srgb, var(--accent) 6%, var(--card)); border-color: transparent; }
 .rebate-row.rebate-total span { color: var(--muted); }
+/* v1.6.20-beta.8 回收周期归属：本周期/往期分组，往期折叠为汇总条（历史不撑长面板） */
+.rebate-group-label { font-size: 11.5px; font-weight: 600; color: var(--accent); margin: 2px 0 4px; }
+.rebate-fold { margin-top: 6px; }
+.rebate-fold summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); padding: 8px 10px; border: 1px dashed var(--line); border-radius: var(--radius); background: transparent; }
+.rebate-fold summary::-webkit-details-marker { display: none; }
+.rebate-fold summary .fold-arrow::after { content: "▾"; font-size: 11px; }
+.rebate-fold[open] summary .fold-arrow::after { content: "▴"; }
+.rebate-fold .rebate-row { margin-top: 6px; }
+.rebate-fold .rebate-past { opacity: .55; }
+.rebate-fold .rebate-past .rebate-note { display: flex; align-items: center; gap: 6px; }
+.rebate-fold .rebate-past .rebate-flag { font-style: normal; font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; flex: none; }
 .rebate-add { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 8px; align-items: center; }
 @media (max-width: 640px) { .rebate-add { grid-template-columns: 1fr 1fr; } }

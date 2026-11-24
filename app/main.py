@@ -25,7 +25,7 @@ from .db import BG_DIR, LOGO_DIR, db, get_setting, init_db, set_setting
 from .ical import generate_ics
 from . import mailer
 
-APP_VERSION = "1.6.20-beta.7"
+APP_VERSION = "1.6.20-beta.8"
 if getattr(sys, "frozen", False):
     # PyInstaller 打包（Windows exe，v1.6.0）：静态资源解包在 sys._MEIPASS/static
     STATIC_DIR = os.path.join(sys._MEIPASS, "static")
@@ -607,11 +607,24 @@ def _with_rates(conn: sqlite3.Connection, sub: dict) -> dict:
         None if conv_base is None
         else round(conv_base * billing.monthly_factor(sub["cycle"]), 2)
     )
-    rebate_total = round(sum(
-        row["amount"] for row in conn.execute(
-            "SELECT amount FROM rebates WHERE sub_id=?", (sub["id"],))
-    ), 2)
-    sub["rebate_total"] = rebate_total
+    # v1.6.20-beta.8 回收周期归属：回收只扣减其发生时所在的计费周期。
+    # 本周期 = [下一账单日 − 1 个周期, 下一账单日)。账单日滚动续费后，旧周期的回收
+    # 自动归入往期、不再参与当前扣减；rebates 表不加字段，老数据按日期自动归期。
+    nb = datetime.date.fromisoformat(sub["next_billing_date"])
+    if sub["cycle"] == "weekly":
+        period_start = nb - datetime.timedelta(days=7)
+    else:
+        period_start = billing.add_months(nb, -billing.cycle_months(sub["cycle"]))
+    rebate_cur, rebate_past = 0.0, 0.0
+    for rrow in conn.execute("SELECT date, amount FROM rebates WHERE sub_id=?", (sub["id"],)):
+        rdate = datetime.date.fromisoformat(rrow["date"])
+        if period_start <= rdate < nb:
+            rebate_cur += rrow["amount"]
+        else:
+            rebate_past += rrow["amount"]
+    rebate_total = round(rebate_cur, 2)
+    sub["rebate_total"] = rebate_total          # 本周期合计（参与主数字与月均扣减）
+    sub["rebate_past_total"] = round(rebate_past, 2)  # 往期合计（留底展示，不参与扣减）
     if sub["monthly_cost_share"] is not None:
         net = sub["monthly_cost_share"] - rebate_total / billing.cycle_months(sub["cycle"])
         sub["monthly_cost_net"] = round(max(0.0, net), 2)
@@ -729,13 +742,30 @@ def _validate_rebate(body: dict) -> dict:
 def list_rebates(request: Request, sub_id: int):
     require_auth(request)
     with db() as conn:
-        if not conn.execute("SELECT id FROM subscriptions WHERE id=?", (sub_id,)).fetchone():
+        sub = conn.execute("SELECT * FROM subscriptions WHERE id=?", (sub_id,)).fetchone()
+        if not sub:
             raise HTTPException(status_code=404, detail="订阅不存在")
         rows = conn.execute(
             "SELECT id, date, amount, note FROM rebates WHERE sub_id=? ORDER BY date DESC, id DESC",
             (sub_id,)).fetchall()
-        return {"rebates": [dict(r) for r in rows],
-                "total": round(sum(r["amount"] for r in rows), 2)}
+        # v1.6.20-beta.8 周期归属：与 _with_rates 同一判定，本周期/往期分组返回
+        nb = datetime.date.fromisoformat(sub["next_billing_date"])
+        if sub["cycle"] == "weekly":
+            period_start = nb - datetime.timedelta(days=7)
+        else:
+            period_start = billing.add_months(nb, -billing.cycle_months(sub["cycle"]))
+        out, cur_total, past_total = [], 0.0, 0.0
+        for r in rows:
+            d = dict(r)
+            in_cur = period_start <= datetime.date.fromisoformat(r["date"]) < nb
+            d["in_current_cycle"] = in_cur
+            if in_cur:
+                cur_total += r["amount"]
+            else:
+                past_total += r["amount"]
+            out.append(d)
+        return {"rebates": out,
+                "total": round(cur_total, 2), "past_total": round(past_total, 2)}
 
 
 @app.post("/api/subscriptions/{sub_id}/rebates")
