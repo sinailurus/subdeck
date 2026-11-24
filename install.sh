@@ -6,6 +6,9 @@
 #
 #   curl -fsSL https://cdn.jsdelivr.net/gh/sinailurus/subdeck@main/install.sh | bash
 #
+# 若 jsdelivr 拉不到，换备用源：
+#   curl -fsSL https://raw.githubusercontent.com/sinailurus/subdeck/main/install.sh | bash
+#
 # 可选参数（通过 bash -s -- 传入）：
 #   --port 8300          宿主机端口（默认 8300）
 #   --password xxxxx     访问密码（默认自动生成 16 位随机密码）
@@ -56,6 +59,17 @@ command -v ss >/dev/null 2>&1 || apt-get install -y iproute2
 if command -v ss >/dev/null 2>&1 \
   && [ -n "$(ss -tln 2>/dev/null | awk '{print $4}' | grep -E ":${PORT}$" | head -n1)" ]; then
   echo "错误：端口 ${PORT} 已被占用，请换一个（--port 其他数字）"; exit 1
+fi
+
+# 磁盘预检：可用空间不足 2GB 只警告不阻断（镜像可能已在本机缓存）
+if command -v df >/dev/null 2>&1; then
+  AVAIL_KB=$(df -Pk "$DIR" 2>/dev/null | awk 'NR==2{print $4}')
+  if [ -z "$AVAIL_KB" ]; then
+    AVAIL_KB=$(df -Pk "$(dirname "$DIR")" 2>/dev/null | awk 'NR==2{print $4}')
+  fi
+  if [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt 2097152 ]; then
+    echo "警告：${DIR} 所在磁盘可用空间约 $((AVAIL_KB/1024))MB（不足 2GB），拉取镜像或解压可能失败"
+  fi
 fi
 
 if [ -z "$PASSWORD" ]; then
@@ -151,7 +165,8 @@ echo "=============================================="
 if [ "${OK:-0}" = "1" ]; then
   echo "SubDeck 安装完成！"
 else
-  echo "服务已启动但健康检查未通过，请运行 docker logs subdeck 查看原因"
+  echo "服务已启动，但 60 秒内健康检查未通过：低配机器首次启动可能只是慢，稍等后刷新试试；"
+  echo "若仍打不开，运行 docker logs subdeck 查看原因"
 fi
 echo
 echo "访问地址：http://${SERVER_IP}:${PORT}"
