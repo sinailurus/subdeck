@@ -50,6 +50,7 @@ const fmtMoneyShort = (v, cur) => {
     : fmtMoney(n, cur);
 };
 const fmtDate = (iso) => { const d = new Date(iso + "T00:00:00"); return `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, "0")}`; };
+const fmtDateY = (iso) => { const d = new Date(iso + "T00:00:00"); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const dueLabel = (n) => n === 0 ? t("today") : n === 1 ? t("tomorrow") : t("daysLater", n);
 const dueClass = (n) => n <= 1 ? "due-soon" : n <= 3 ? "due-warn" : "due-ok";
 const catLabel = (c) => CAT_LABEL[c] || c || "—";
@@ -100,7 +101,14 @@ async function api(path, opts = {}) {
   });
   if (resp.status === 401) { showLogin(); throw new Error("unauthorized"); }
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw new Error(data.detail || resp.status);
+  if (!resp.ok) {
+    // beta.10：FastAPI 422 的 detail 是数组，直接抛出会变成 "[object Object]"，提取可读文案
+    const d = data.detail;
+    const msg = typeof d === "string" ? d
+      : Array.isArray(d) && d[0]?.msg ? d[0].msg.replace(/^Value error, /, "")
+      : resp.status;
+    throw new Error(String(msg));
+  }
   return data;
 }
 
@@ -918,7 +926,7 @@ async function renderRebates(subId) {
     // v1.6.20-beta.8 周期归属：本周期参与扣减，往期折叠为汇总条（对齐银行对账单的当前期明细化 + 历史收起模式）
     const row = (r, past) => `
       <div class="rebate-row${past ? " rebate-past" : ""}">
-        <span class="rebate-date">${fmtDate(r.date)}</span>
+        <span class="rebate-date">${past ? fmtDateY(r.date) : fmtDate(r.date)}</span>
         <span class="rebate-note" title="${esc(r.note)}">${esc(r.note || "回收")}${past ? `<em class="rebate-flag">上一周期</em>` : ""}</span>
         <span class="rebate-amt">-${fmtMoney(r.amount, cur)}</span>
         <button type="button" class="icon-btn" data-rebate-del="${r.id}" title="删除"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 7h14M9 7V5h6v2m-7 0 1 13h6l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
@@ -945,6 +953,7 @@ $("#rebate-list").addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-rebate-del]");
   if (!btn) return;
   const subId = parseInt($("#f-id").value, 10);
+  if (!subId) { toast("请先保存订阅，再管理回收记录"); return; }
   try {
     await api(`/api/subscriptions/${subId}/rebates/${btn.dataset.rebateDel}`, { method: "DELETE" });
     toast("已删除");
@@ -954,6 +963,7 @@ $("#rebate-list").addEventListener("click", async (e) => {
 
 $("#btn-add-rebate").addEventListener("click", async () => {
   const subId = parseInt($("#f-id").value, 10);
+  if (!subId) { toast("请先保存订阅，再记回收"); return; }   // beta.10：新建未保存时订阅尚无 id
   const date = $("#f-rebate-date").value, amount = parseFloat($("#f-rebate-amount").value);
   if (!date || !amount || amount <= 0) { toast("请填写回收日期和金额"); return; }
   try {

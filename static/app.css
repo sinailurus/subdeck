@@ -1,5 +1,8 @@
 /* SubDeck 样式：移动优先 + 响应式断点（≥820px 平板/桌面布局） */
 
+/* v1.6.20-beta.10 hidden 属性兜底：任何元素设置 hidden 后不得被 display 类规则覆盖 */
+[hidden] { display: none !important; }
+
 :root {
   --bg: #f4f6fb;
   --card: #ffffff;
