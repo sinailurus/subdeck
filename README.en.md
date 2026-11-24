@@ -4,7 +4,7 @@
 
 A self-hosted subscription manager: track memberships, subscriptions and recurring bills, roll billing dates forward automatically, get due-date reminders, convert amounts with live exchange rates, and see weekly / monthly / yearly spending summaries.
 
-> **AIGC notice:** This project was developed with AI assistance.
+> **AIGC notice:** This project was developed with AI assistance. Copyright and final decision authority belong to the repository owner.
 >
 > **Docs:** [User Agreement (TERMS.md)](TERMS.md) ｜ [Privacy policy](static/privacy-policy.html) (after deployment, available in-app at `http://NAS_IP:8300/assets/privacy-policy.html`)
 
