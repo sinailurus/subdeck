@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SubDeck 云服务器一键安装脚本
 #
-# 目标环境：腾讯云轻量应用服务器 Lighthouse（Ubuntu 22.04/24.04 或 Debian 12），其他
-# x86_64 云主机 / VPS 通常也可用。在服务器网页终端或 SSH 里执行：
+# 适用环境：任意 x86_64 云主机 / VPS（Ubuntu 22.04/24.04 或 Debian 12），
+# 包括但不限于腾讯云轻量、阿里云轻量、华为云、海外 VPS。在服务器网页终端或 SSH 里执行：
 #
 #   curl -fsSL https://cdn.jsdelivr.net/gh/sinailurus/subdeck@main/install.sh | bash
 #
@@ -33,7 +33,7 @@ done
 
 # ---------- 环境检查 ----------
 if [ "$(id -u)" -ne 0 ]; then
-  echo "错误：请用 root 运行（轻量服务器网页终端默认就是 root）。"
+  echo "错误：请用 root 运行（各家云控制台的网页终端一般默认 root，否则先 sudo -i）。"
   exit 1
 fi
 
@@ -47,7 +47,7 @@ if [ "$PORT" -eq 22 ]; then
   echo "错误：22 是 SSH 端口，不能占用"; exit 1
 fi
 
-# 极简镜像可能缺 curl / ss，先补齐
+# 部分精简系统镜像可能缺 curl / ss，先补齐
 if ! command -v curl >/dev/null 2>&1; then
   apt-get update -y && apt-get install -y curl
 fi
@@ -158,12 +158,13 @@ echo "访问地址：http://${SERVER_IP}:${PORT}"
 echo "访问密码：${PASSWORD}"
 echo "（密码保存在 ${DIR}/.env，请立即抄到密码管理器里，此页不会再次完整显示）"
 echo
-echo "重要：现在就去控制台开防火墙端口，否则外网访问不了！"
-echo "  腾讯云控制台 → 轻量应用服务器 → 防火墙 → 添加规则："
-echo "  协议 TCP，端口 ${PORT}，来源 0.0.0.0/0"
+echo "重要：现在就去控制台放行端口（防火墙/安全组），否则外网访问不了！"
+echo "  示范（腾讯云轻量）：控制台 → 轻量应用服务器 → 防火墙 → 添加规则"
+echo "  其他云大同小异：阿里云轻量「防火墙」、ECS/华为云「安全组」、海外 VPS 看其防火墙面板"
+echo "  规则内容：协议 TCP，端口 ${PORT}，来源 0.0.0.0/0"
 echo
 echo "----------------------------------------------"
-echo "安全须知（部署者必读，详见仓库 docs/腾讯云轻量服务器一键部署.md）："
+echo "安全须知（部署者必读，详见仓库 docs/云服务器一键部署.md）："
 echo "  1. 访问走 HTTP 明文：密码和数据在公网未加密传输，介意请自行配域名+HTTPS"
 echo "     （大陆服务器绑域名需 ICP 备案；用 IP:端口 访问不需要备案）"
 echo "  2. 密码是唯一防线：无二次验证，泄露即数据泄露，勿用弱密码"
