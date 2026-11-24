@@ -846,7 +846,7 @@ function openModal(sub = null) {
   $("#f-url").value = sub?.url || "";
   $("#f-notes").value = sub?.notes || "";
   // v1.6.20 回血口径：拼车人数与回收记录（回收区块仅编辑模式显示）
-  $("#f-share").value = sub ? (sub.share_count || 0) : "";
+  $("#f-share").value = sub && sub.share_count ? sub.share_count : "";   // beta.9：不拼车显示空占位，不误导为「0 人拼车」
   $("#f-mypaid").value = sub && sub.my_paid ? sub.my_paid : "";
   const rblock = $("#rebate-block");
   if (sub) { rblock.hidden = false; renderRebates(sub.id); $("#f-rebate-date").value = new Date().toISOString().slice(0, 10); }
