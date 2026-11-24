@@ -52,7 +52,7 @@
     <section id="view-dashboard" class="view">
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-label">月均支出</div><div class="stat-value" id="stat-monthly">--</div><div class="stat-net" id="stat-monthly-net" hidden title="扣除拼车分摊与回收后的月均成本；回收按计费周期摊销冲减"><span>净成本</span><b id="stat-monthly-net-val"></b><span class="net-rebate" id="stat-monthly-net-rebate" style="display:none;"></span></div></div>
-        <div class="stat-card"><div class="stat-label">年度支出</div><div class="stat-value" id="stat-yearly">--</div></div>
+        <div class="stat-card"><div class="stat-label">年度支出</div><div class="stat-value" id="stat-yearly">--</div><div class="stat-net" id="stat-yearly-net" hidden title="扣除拼车分摊与回收后的年度成本；回收按计费周期摊销冲减"><span>净成本</span><b id="stat-yearly-net-val"></b><span class="net-rebate" id="stat-yearly-net-rebate" style="display:none;"></span></div></div>
         <div class="stat-card clickable" id="stat-active-card" title="点按查看活跃订阅"><div class="stat-label">活跃订阅</div><div class="stat-value" id="stat-count">--</div><div class="muted small" id="stat-paused-hint" style="display:none;" title="点按查看已暂停订阅"></div></div>
         <div class="stat-card" id="stat-pending-card"><div class="stat-label">即将扣费</div><div class="stat-value" id="stat-pending">--</div></div>
       </div>
@@ -80,6 +80,7 @@
           </div>
         </div>
         <div id="category-chart" class="category-chart"></div>
+        <div class="chart-net" id="chart-net" hidden title="扣除拼车分摊与回收后的月均成本；回收按计费周期摊销冲减"></div>
       </div>
       <div class="panel">
         <h2>未来 30 天扣费</h2>

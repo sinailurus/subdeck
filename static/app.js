@@ -342,6 +342,30 @@ function renderStats() {
       else rbEl.style.display = "none";
     } else netEl.hidden = true;
   }
+  // v1.6.20-beta.11：分类图表模块底部同口径净额对照，毛/净在概览成对出现（三样式通用，只做模块级一行）
+  const chartNet = $("#chart-net");
+  if (chartNet) {
+    const net = s.monthly_total_net;
+    if (net != null && net < s.monthly_total) {
+      const rb = s.monthly_rebate || 0;
+      chartNet.innerHTML = `<span>月合计 ${fmtMoney(s.monthly_total, base)}</span><span>净成本 <b>${fmtMoney(net, base)}</b></span>`
+        + (rb > 0 ? `<span class="net-rebate">回收 −${fmtMoney(rb, base)}/月</span>` : "");
+      chartNet.hidden = false;
+    } else chartNet.hidden = true;
+  }
+  // v1.6.20-beta.11：年度支出卡同口径净副行（年 = 月 × 12，与后端 yearly_total 口径一致）
+  const yNetEl = $("#stat-yearly-net");
+  if (yNetEl) {
+    const net = s.monthly_total_net;
+    if (net != null && net < s.monthly_total) {
+      yNetEl.hidden = false;
+      $("#stat-yearly-net-val").textContent = fmtMoney(net * 12, base);
+      const rb = s.monthly_rebate || 0;
+      const rbEl = $("#stat-yearly-net-rebate");
+      if (rb > 0) { rbEl.textContent = `回收 −${fmtMoney(rb * 12, base)}/年`; rbEl.style.display = ""; }
+      else rbEl.style.display = "none";
+    } else yNetEl.hidden = true;
+  }
   // v1.6.3：活跃订阅数旁提示已暂停数量（暂停数 = 列表总数 - 活跃数）
   const pausedN = (state.subs || []).length - s.active_count;
   const hint = $("#stat-paused-hint");

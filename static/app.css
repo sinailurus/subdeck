@@ -801,6 +801,10 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 .stat-net { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 6px; font-size: 12px; color: var(--muted); overflow: hidden; }
 .stat-net span, .stat-net b { white-space: nowrap; }
 .stat-net b { font-size: 14px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+/* v1.6.20-beta.11 分类图表底部净额对照行，口径与月均卡净成本一致 */
+.chart-net { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); }
+.chart-net b { font-size: 13.5px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.chart-net .net-rebate { color: var(--ok, #2e9e6b); }
 .net-rebate { color: var(--ok); }
 .share-editor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .share-editor input { width: 100px; }
