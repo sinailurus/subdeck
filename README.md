@@ -229,6 +229,18 @@ AUTH_PASSWORD=test123 DATA_DIR=./data uvicorn app.main:app --port 8017
 python3 tests/e2e.py
 ```
 
+### 用户手册再生成
+
+正式用户手册的 PDF 由脚本生成，截图素材随仓库维护（`docs/manual-shots/`，均为本地实例演示数据）：
+
+```bash
+pip install reportlab
+# 依赖 Noto Serif SC 与更纱黑体，字体路径见脚本内 FONT 注册处，可按本机字体路径调整
+python3 scripts/gen_user_manual.py
+```
+
+默认输出到 `docs/`，可用环境变量 `MANUAL_OUT` 指定输出目录、`MANUAL_SHOTS` 指定截图目录。
+
 ## 更新日志
 
 完整变更记录见 [CHANGELOG.md](CHANGELOG.md)，每次发版都会更新；升级前请阅读对应版本的「升级说明」。
