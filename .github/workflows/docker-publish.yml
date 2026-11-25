@@ -6,6 +6,11 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      force_release:
+        description: 为 beta 标签强制发布 Release（仅指定测试版需要时开启）
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -56,8 +61,9 @@ jobs:
           cache-to: type=gha,mode=max
 
   # v1.6.0 起：tag 推送时打包 Windows 一键部署包并挂到 GitHub Release
+  # 2026-11-25 起beta标签不再发 Release（镜像照常推送），特例走 dispatch 的 force_release 开关
   build-windows:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && (!contains(github.ref, '-beta') || inputs.force_release)
     runs-on: windows-latest
     permissions:
       contents: write   # 创建 Release 并上传附件
@@ -106,7 +112,7 @@ jobs:
   # PyInstaller 不支持交叉编译：Intel 用 macos-15-intel，Apple Silicon 用 macos-15（M1）。
   # 注：macos-13/14 已于 2026 年退役，勿回退。
   build-macos:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && (!contains(github.ref, '-beta') || inputs.force_release)
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write

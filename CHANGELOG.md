@@ -2,6 +2,11 @@
 
 本文件记录 SubDeck 所有用户可见的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。README 只挂链接，完整记录以此文件为准。
 
+## [未发布]
+
+### 变更
+- **Release 发布策略调整**：自下一个 beta 版本起，测试版仅推送 Docker 镜像（tag 照常保留作回滚锚点），不再自动创建 GitHub Release；正式版与个别需要发布附件的指定测试版照常发布（后者经手动触发并开启 force_release 开关）。
+
 ## [1.6.20] - 2026-11-25
 
 抢先版线 1.6.20-beta.1~11 经真机验收后定稿为正式版，应用内容与 beta.11 相同。
