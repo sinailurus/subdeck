@@ -1,6 +1,6 @@
 # SubDeck 绿联 UGOS Pro 应用包打包配置
 
-本目录存放 SubDeck 的绿联 UGOS Pro 应用（`.upk`）打包配置，支持 `amd64` 与 `arm64` 双架构。应用基于仓库 CI 自动构建的多架构 Docker 镜像制作，应用 ID 为 `com.sinailurus.subdeck`，当前版本 `1.6.18`（构建号 `0001`）。包内服务进程以 root 运行（compose 注入 `RUN_AS_ROOT=1`）：UGOS Pro 数据文件夹为「权限位 000 + ACL 白名单」模型且容器重建时会重刷策略，降权用户无法稳定写入。
+本目录存放 SubDeck 的绿联 UGOS Pro 应用（`.upk`）打包配置，支持 `amd64` 与 `arm64` 双架构。应用基于仓库 CI 自动构建的多架构 Docker 镜像制作，应用 ID 为 `com.sinailurus.subdeck`，当前版本随主程序发布线更新（现为 `1.6.20-beta.11`，构建号随发布递增）。包内服务进程以 root 运行（compose 注入 `RUN_AS_ROOT=1`）：UGOS Pro 数据文件夹为「权限位 000 + ACL 白名单」模型且容器重建时会重刷策略，降权用户无法稳定写入。
 
 ## 应用信息
 

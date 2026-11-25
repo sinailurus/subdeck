@@ -2,7 +2,7 @@
 # 镜像随 .upk 包内置（rootfs_<arch>/images/*.tar），tag 与 tar 内一致，安装时不联网拉取
 services:
   subdeck:
-    image: ghcr.io/sinailurus/subdeck:1.6.19
+    image: ghcr.io/sinailurus/subdeck:1.6.20-beta.11
     user: "0:0"                                          # 必须保留：配合 RUN_AS_ROOT 以 root 运行（UGOS 数据文件夹为 000+ACL 模型，降权用户无法稳定写入）
     restart: unless-stopped
     ports:

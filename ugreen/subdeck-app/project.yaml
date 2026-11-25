@@ -1,6 +1,6 @@
 spec_version: "2.1"
 app_id: com.sinailurus.subdeck
-version: 1.6.19
+version: 1.6.20-beta.11
 support_arch:
   - amd64
   - arm64
