@@ -30,7 +30,8 @@ jobs:
 
       - name: Read application version
         run: |
-          APP_VERSION=$(grep -oP '^APP_VERSION = "\K[\d.]+' app/main.py)
+          # 完整提取引号内版本号，兼容 prerelease 后缀（如 1.6.20-beta.11）
+          APP_VERSION=$(grep -oP '^APP_VERSION = "\K[^"]+' app/main.py)
           test -n "$APP_VERSION"
           echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
 
