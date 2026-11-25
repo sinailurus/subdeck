@@ -877,5 +877,9 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 .rebate-fold .rebate-past { opacity: .55; }
 .rebate-fold .rebate-past .rebate-note { display: flex; align-items: center; gap: 6px; }
 .rebate-fold .rebate-past .rebate-flag { font-style: normal; font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; flex: none; }
+/* 1.6.22-beta.1 本周期折叠条：实线边框+正文色，与往期（虚线+弱化）区分层级；合计加粗 */
+.rebate-fold-cur summary { color: var(--text); border-style: solid; }
+.rebate-fold-cur summary b { color: var(--ok, #2e9e6b); font-variant-numeric: tabular-nums; }
+.rebate-fold-cur .rebate-total { margin-top: 6px; }
 .rebate-add { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 8px; align-items: center; }
 @media (max-width: 640px) { .rebate-add { grid-template-columns: 1fr 1fr; } }

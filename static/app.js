@@ -901,7 +901,7 @@ function openModal(sub = null) {
   $("#f-share").value = sub && sub.share_count ? sub.share_count : "";   // beta.9：不拼车显示空占位，不误导为「0 人拼车」
   $("#f-mypaid").value = sub && sub.my_paid ? sub.my_paid : "";
   const rblock = $("#rebate-block");
-  if (sub) { rblock.hidden = false; renderRebates(sub.id); $("#f-rebate-date").value = new Date().toISOString().slice(0, 10); }
+  if (sub) { rblock.hidden = false; rebateCurOpen = false; renderRebates(sub.id); $("#f-rebate-date").value = new Date().toISOString().slice(0, 10); }
   else { rblock.hidden = true; $("#rebate-list").innerHTML = ""; }
   $("#btn-delete").classList.toggle("hidden", !sub);
   $("#f-logo").value = "";
@@ -960,6 +960,9 @@ $("#btn-cancel").addEventListener("click", () => $("#modal-mask").classList.add(
 /* ---------------- 回收记录（v1.6.20 回血口径） ---------------- */
 /* 金额展示复用 fmtMoney（符号前缀格式，44 行定义）。回收按订阅币种记账。 */
 const rebateCurrency = (subId) => (state.subs || []).find((x) => x.id === subId)?.currency || "CNY";
+/* 1.6.22-beta.1：本周期超过阈值折叠为汇总条（笔数+合计），记一笔后保持展开 */
+const REBATE_FOLD_MAX = 5;
+let rebateCurOpen = false;
 
 async function renderRebates(subId) {
   const list = $("#rebate-list");
@@ -977,11 +980,16 @@ async function renderRebates(subId) {
       </div>`;
     const curRows = d.rebates.filter((r) => r.in_current_cycle);
     const pastRows = d.rebates.filter((r) => !r.in_current_cycle);
-    let html = `<div class="rebate-group-label">本周期</div>`;
-    html += curRows.length
+    const curBody = curRows.length
       ? curRows.map((r) => row(r, false)).join("")
         + `<div class="rebate-row rebate-total"><span>本周期合计</span><b>${fmtMoney(d.total, cur)}</b></div>`
       : `<div class="muted small" style="padding:4px 0;">本周期暂无回收</div>`;
+    let html = curRows.length > REBATE_FOLD_MAX
+      ? `<details class="rebate-fold rebate-fold-cur"${rebateCurOpen ? " open" : ""}>
+          <summary>本周期回收 ${curRows.length} 笔 · 合计 <b>${fmtMoney(d.total, cur)}</b><span class="fold-arrow" aria-hidden="true"></span></summary>
+          ${curBody}
+        </details>`
+      : `<div class="rebate-group-label">本周期</div>${curBody}`;
     if (pastRows.length) {
       html += `
       <details class="rebate-fold">
@@ -992,6 +1000,12 @@ async function renderRebates(subId) {
     list.innerHTML = html;
   } catch { list.innerHTML = `<div class="muted small">回收记录加载失败</div>`; }
 }
+
+/* toggle 不冒泡，用捕获监听把本周期折叠条的展开状态带到下一次重渲染 */
+$("#rebate-list").addEventListener("toggle", (e) => {
+  const fold = e.target.closest?.(".rebate-fold-cur");
+  if (fold) rebateCurOpen = fold.open;
+}, true);
 
 $("#rebate-list").addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-rebate-del]");
@@ -1015,6 +1029,7 @@ $("#btn-add-rebate").addEventListener("click", async () => {
       { method: "POST", body: { date, amount, note: $("#f-rebate-note").value.trim() } });
     $("#f-rebate-amount").value = ""; $("#f-rebate-note").value = "";
     toast("回收已记入");
+    rebateCurOpen = true;   // 记完展开，新记录即时可见
     renderRebates(subId);
   } catch (err) { if (err.message !== "unauthorized") toast("记入失败：" + err.message); }
 });
