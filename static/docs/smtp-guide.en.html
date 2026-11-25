@@ -1,0 +1,272 @@
+<h1>How to get an SMTP app password</h1>
+<p>When SubDeck sends reminder emails, it asks for an "app password", not your mailbox login password. This is a separate passcode the mail provider issues for third-party apps. It can only send and receive mail; it cannot sign in to the web mailbox. The benefit: even if this string leaks, nobody can get into your mailbox with it.</p>
+<p>Below are step-by-step instructions for each mail provider, plus how to enter the result into SubDeck. Pick the section for the mailbox you actually use.</p>
+<h2>QQ Mail</h2>
+<p>For @qq.com and @foxmail.com addresses.</p>
+<h3>Step 1: enable the service and generate the app password</h3>
+<ol>
+<li>Open mail.qq.com in a desktop browser and sign in to your QQ mailbox.</li>
+<li>Click "Settings" at the top of the page.</li>
+<li>Click "Account and Security".</li>
+<li>Scroll down to the section labeled "POP3/IMAP/SMTP/Exchange/CardDAV Services".</li>
+<li>Click "Enable" next to "IMAP/SMTP Service".</li>
+<li>Follow the on-page prompt and send a text message from your bound phone number to verify it is you.</li>
+<li>Once verified, the page shows a 16-character app password.</li>
+<li>Copy it right away into a note or password manager.</li>
+</ol>
+<h3>Step 2: enter it in SubDeck</h3>
+<p>Open SubDeck, go to "Settings", find "Email reminders", and fill in:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMTP server</td>
+<td>smtp.qq.com</td>
+</tr>
+<tr>
+<td>Port</td>
+<td>465</td>
+</tr>
+<tr>
+<td>SSL</td>
+<td>Checked</td>
+</tr>
+<tr>
+<td>Sender email (SMTP username)</td>
+<td>Your full QQ address, e.g. 123456789@qq.com</td>
+</tr>
+<tr>
+<td>SMTP app password</td>
+<td>The 16-character code from step 1</td>
+</tr>
+</tbody>
+</table>
+<p>Click "Send test email". Once it arrives, click "Save reminder settings".</p>
+<h3>Notes</h3>
+<ul>
+<li>The app password is shown only once. Copy it before leaving the page.</li>
+<li>To review or revoke it later: go back to "Account and Security", open "Device Management", then "App Password Management". You can disable or reset it. A reset invalidates the old code immediately, so update SubDeck with the new one.</li>
+<li>Changing your QQ password invalidates every app password. Sending from SubDeck will fail; go back to step 1 and generate a new one.</li>
+<li>QQ Mail allows roughly 500 messages per day, far more than reminders need.</li>
+</ul>
+<h2>163 / 126 Mail</h2>
+<p>For @163.com and @126.com addresses. Both follow the same procedure.</p>
+<h3>Step 1: enable the service and generate the app password</h3>
+<ol>
+<li>Open mail.163.com in a desktop browser (mail.126.com for 126) and sign in.</li>
+<li>Click "Settings" at the top of the page.</li>
+<li>Click "POP3/SMTP/IMAP".</li>
+<li>Find "SMTP Service" and enable it.</li>
+<li>Follow the prompt and send a text message from your bound phone number.</li>
+<li>Once verified, the page shows a "client authorization password". This is the app password.</li>
+<li>Copy it right away.</li>
+</ol>
+<h3>Step 2: enter it in SubDeck</h3>
+<p>Open SubDeck, go to "Settings", find "Email reminders", and fill in:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMTP server</td>
+<td>smtp.163.com (smtp.126.com for 126)</td>
+</tr>
+<tr>
+<td>Port</td>
+<td>465</td>
+</tr>
+<tr>
+<td>SSL</td>
+<td>Checked</td>
+</tr>
+<tr>
+<td>Sender email (SMTP username)</td>
+<td>Your full email address</td>
+</tr>
+<tr>
+<td>SMTP app password</td>
+<td>The client authorization password from step 1</td>
+</tr>
+</tbody>
+</table>
+<p>Click "Send test email". Once it arrives, click "Save reminder settings".</p>
+<h3>Notes</h3>
+<ul>
+<li>Newly registered accounts may not be able to enable SMTP yet. Some need a bound phone number first; some need to wait a period. Follow the on-page prompt.</li>
+<li>Changing the mailbox password invalidates the app password. Go back to step 1 and generate a new one.</li>
+<li>The app password is shown only once. Copy it before leaving the page.</li>
+</ul>
+<h2>Gmail</h2>
+<p>For @gmail.com addresses.</p>
+<h3>Step 1: turn on 2-Step Verification and generate an app password</h3>
+<ol>
+<li>Open myaccount.google.com in a browser and sign in to your Google account.</li>
+<li>Click "Security" in the left menu.</li>
+<li>Make sure "2-Step Verification" is on. Turn it on if it is not; the next step's entry point will not appear otherwise.</li>
+<li>Type app password into the search box at the top and open "App passwords".</li>
+<li>Enter a name you will recognize, such as SubDeck.</li>
+<li>Click "Create". The page shows a 16-character password.</li>
+<li>Copy it right away.</li>
+</ol>
+<h3>Step 2: enter it in SubDeck</h3>
+<p>Open SubDeck, go to "Settings", find "Email reminders", and fill in:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMTP server</td>
+<td>smtp.gmail.com</td>
+</tr>
+<tr>
+<td>Port</td>
+<td>465</td>
+</tr>
+<tr>
+<td>SSL</td>
+<td>Checked</td>
+</tr>
+<tr>
+<td>Sender email (SMTP username)</td>
+<td>Your full Gmail address</td>
+</tr>
+<tr>
+<td>SMTP app password</td>
+<td>The 16-character app password from step 1</td>
+</tr>
+</tbody>
+</table>
+<p>Click "Send test email". Once it arrives, click "Save reminder settings".</p>
+<h3>Notes</h3>
+<ul>
+<li>2-Step Verification must be on first; otherwise the "App passwords" entry does not appear.</li>
+<li>If the 16-character password contains spaces, paste it as is. Do not remove them.</li>
+<li>Changing your Google password revokes all app passwords. Sending from SubDeck will fail; go back to step 1 and generate a new one.</li>
+<li>Gmail allows roughly 500 messages per day, far more than reminders need.</li>
+</ul>
+<h2>iCloud Mail</h2>
+<p>For @icloud.com, @me.com and @mac.com addresses.</p>
+<h3>Step 1: generate an app-specific password</h3>
+<ol>
+<li>Open account.apple.com in a browser and sign in with your Apple Account.</li>
+<li>Click "Sign-In and Security".</li>
+<li>Click "App-Specific Passwords".</li>
+<li>Click "+", enter a label you will recognize such as SubDeck.</li>
+<li>Click "Done". The page shows a password.</li>
+<li>Copy it right away. It contains hyphens, in the form xxxx-xxxx-xxxx-xxxx. <strong>Copy the hyphens too; the whole string is 16 letters.</strong></li>
+</ol>
+<h3>Step 2: enter it in SubDeck</h3>
+<p>Open SubDeck, go to "Settings", find "Email reminders", and fill in the following. <strong>This provider differs from the others. Read carefully.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMTP server</td>
+<td><strong>smtp.mail.me.com</strong> (not icloud.com)</td>
+</tr>
+<tr>
+<td>Port</td>
+<td><strong>587</strong> (not 465)</td>
+</tr>
+<tr>
+<td>SSL</td>
+<td><strong>Unchecked</strong> (off)</td>
+</tr>
+<tr>
+<td>Sender email (SMTP username)</td>
+<td>Your full iCloud address</td>
+</tr>
+<tr>
+<td>SMTP app password</td>
+<td>The app-specific password from step 1, hyphens included</td>
+</tr>
+</tbody>
+</table>
+<p>Click "Send test email". Once it arrives, click "Save reminder settings".</p>
+<h3>Notes</h3>
+<ul>
+<li>Two-factor authentication must be on for your Apple Account. Most people already have it; if not, turn it on under "Sign-In and Security" first.</li>
+<li>Server, port and SSL are different from the other providers. Follow the table above, not the QQ section.</li>
+<li>Changing your Apple Account password invalidates every app-specific password. Go back to step 1 and generate a new one.</li>
+</ul>
+<h2>Outlook Mail (no longer available on some accounts)</h2>
+<p>For @outlook.com, @hotmail.com, @live.com and @msn.com addresses.</p>
+<h3>Step 1: generate an app password</h3>
+<ol>
+<li>Open account.microsoft.com in a browser and sign in to your Microsoft account.</li>
+<li>Click "Security".</li>
+<li>Find "Advanced security options" and open it.</li>
+<li>Make sure two-step verification is on. Turn it on if it is not.</li>
+<li>Scroll to "App passwords" and click "Create a new app password".</li>
+<li>The page shows a password. Copy it right away.</li>
+</ol>
+<h3>Step 2: enter it in SubDeck</h3>
+<p>Open SubDeck, go to "Settings", find "Email reminders", and fill in:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMTP server</td>
+<td>smtp-mail.outlook.com</td>
+</tr>
+<tr>
+<td>Port</td>
+<td>587</td>
+</tr>
+<tr>
+<td>SSL</td>
+<td><strong>Unchecked</strong> (off)</td>
+</tr>
+<tr>
+<td>Sender email (SMTP username)</td>
+<td>Your full Outlook address</td>
+</tr>
+<tr>
+<td>SMTP app password</td>
+<td>The app password from step 1</td>
+</tr>
+</tbody>
+</table>
+<p>Click "Send test email". Once it arrives, click "Save reminder settings".</p>
+<h3>Notes</h3>
+<ul>
+<li><strong>Microsoft is gradually retiring "sign in to SMTP with an app password". Your account may already be unable to send mail this way.</strong> If the test send fails with an error such as authentication unsuccessful, this is why.</li>
+<li>This is a change to Microsoft's account security policy and is not related to SubDeck. There is no setting in SubDeck that can work around it.</li>
+<li>If this happens, switch to one of the providers above (QQ, 163, Gmail) for reminder emails.</li>
+</ul>
+<h2>FAQ</h2>
+<p><strong>The app password looks wrong when pasted, or the test send fails</strong></p>
+<p>Check for spaces before or after the pasted code. Selecting one extra space makes the provider reject it as a wrong password. Copy again and select only the code itself.</p>
+<p><strong>SubDeck stopped sending after I changed my mailbox password</strong></p>
+<p>Every provider works the same way: changing the login password invalidates the app password. Go back to the section for your provider, generate a new one, and enter it in SubDeck.</p>
+<p><strong>It says sent, but nothing arrived</strong></p>
+<p>Check the spam, promotions and subscriptions folders first. Reminder emails often land there. Mark one as "not spam" and the rest will go to the inbox.</p>
+<p><strong>Test send fails and the app password is definitely correct</strong></p>
+<p>Compare the "Step 2" table for your provider line by line, especially three items: SMTP server, port, and the SSL switch. iCloud and Outlook are the easiest to get wrong. They use port 587 with SSL off, the opposite of QQ, 163 and Gmail (465 with SSL on).</p>
+<p><strong>Can the sender and recipient be different addresses?</strong></p>
+<p>Yes. Fill the sender with whichever account you generated the app password for, and use that account's app password. Recipients can be anything; separate multiple addresses with commas.</p>
+<p><strong>How soon will I get a reminder after setting this up?</strong></p>
+<p>Once enabled, SubDeck checks once a day at the time you set and sends one digest email covering subscriptions due in the coming days. To verify the configuration right away, use "Send test email" instead of waiting for the scheduled time.</p>

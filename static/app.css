@@ -60,6 +60,54 @@ body {
 .about a:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent); }
 .ta-r { text-align: right; }
 
+/* SMTP 授权码教程帮助视图：入口链接与文档排版全部走主题变量 */
+.doc-link {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  margin: 0;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background .15s;
+}
+.doc-link:hover { background: var(--primary-weak); }
+.doc-link:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent); }
+
+.doc-content { margin-top: 14px; color: var(--text); line-height: 1.7; }
+.doc-content h1 { font-size: 20px; margin: 10px 0 12px; color: var(--text); }
+.doc-content h2 {
+  font-size: 17px;
+  margin: 22px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+.doc-content h3 { font-size: 15px; margin: 16px 0 6px; color: var(--text); }
+.doc-content p { margin: 8px 0; font-size: 13.5px; }
+.doc-content ol, .doc-content ul { margin: 8px 0; padding-left: 22px; }
+.doc-content li { margin: 4px 0; font-size: 13.5px; }
+.doc-content strong { color: var(--text); }
+.doc-content table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.doc-content th, .doc-content td {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-content th { background: var(--primary-weak); font-weight: 600; }
+
 /* ---------- 外观背景层（皮肤色晕 / 自定义背景图） ---------- */
 #bg-layer {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;

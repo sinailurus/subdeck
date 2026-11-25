@@ -1319,3 +1319,11 @@ def index():
         content = f.read()
     content = re.sub(r"\?v=[\w.]+", f"?v={APP_VERSION}", content)
     return HTMLResponse(content, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/help/smtp")
+def help_smtp():
+    # SMTP 授权码教程帮助页（内容源 docs/smtp-guide.zh.md，渲染脚本 scripts/render_smtp_docs.py）
+    path = os.path.join(STATIC_DIR, "docs", "smtp-guide.zh.html")
+    with open(path, encoding="utf-8") as f:
+        return HTMLResponse(f.read(), headers={"Cache-Control": "no-cache"})

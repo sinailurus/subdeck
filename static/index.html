@@ -323,7 +323,7 @@
       </div>
       <div class="panel" id="sett-mail">
         <h2>邮箱提醒</h2>
-        <p class="muted small">每天到设定时间自动检查未来 <strong id="notify-lead-preview">3</strong> 天内到期的订阅，汇总成一封邮件发送；同一账单日只提醒一次。国内邮箱（QQ / 163 等）请使用「授权码」而非登录密码。QQ 邮箱需在网页版「设置 → 账户」开启 SMTP 服务后获取授权码。</p>
+        <p class="muted small">每天到设定时间自动检查未来 <strong id="notify-lead-preview">3</strong> 天内到期的订阅，汇总成一封邮件发送；同一账单日只提醒一次。国内邮箱（QQ / 163 等）请使用「授权码」而非登录密码。不知道授权码在哪拿？<button type="button" class="doc-link" id="link-smtp-guide">看各邮箱获取教程</button></p>
         <label class="check-row"><input type="checkbox" id="f-notify-enabled"> 启用邮箱提醒</label>
         <div class="form-row">
           <label>收件邮箱（多个用逗号分隔）</label>
@@ -394,6 +394,14 @@
         <a href="https://github.com/sinailurus/subdeck/blob/main/TERMS.md" target="_blank" rel="noopener">用户协议</a></p>
       </div>
           </div>
+    </section>
+
+    <!-- SMTP 授权码教程帮助视图（内容经 /help/smtp 拉取，源文件 docs/smtp-guide.zh.md） -->
+    <section id="view-smtp-help" class="view hidden">
+      <div class="panel">
+        <button type="button" class="btn" id="btn-smtp-back">返回设置</button>
+        <div id="smtp-help-content" class="doc-content"></div>
+      </div>
     </section>
   </main>
 

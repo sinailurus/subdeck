@@ -534,6 +534,14 @@ def ics_path_token_flow():
     call("GET", "/api/calendar/badtoken.ics", expect=401)
 check("日历订阅路径式token", ics_path_token_flow)
 
+def smtp_help_page():
+    """SMTP 授权码教程帮助页：无需登录可读（纯公共内容），含核心关键词与表格。"""
+    page, sc = call("GET", "/help/smtp")
+    page = page.decode("utf-8") if isinstance(page, bytes) else page
+    assert "授权码" in page and "<table>" in page, "教程页内容缺失"
+    assert "smtp.qq.com" in page and "587" in page, "教程页配置数据缺失"
+check("SMTP教程帮助页", smtp_help_page)
+
 print(f"\n通过 {len(PASS)} 失败 {len(FAIL)}")
 if FAIL: raise SystemExit(1)
 print("ALL TESTS PASSED")

@@ -195,13 +195,33 @@ function renderAll() {
 /* ---------------- 导航 ---------------- */
 function switchView(name) {
   state.view = name;
-  for (const v of ["dashboard", "subs", "calendar", "settings"])
+  for (const v of ["dashboard", "subs", "calendar", "settings", "smtp-help"])
     $("#view-" + v).classList.toggle("hidden", v !== name);
   document.querySelectorAll(".nav-btn").forEach((b) =>
-    b.classList.toggle("active", b.dataset.nav === name));
+    b.classList.toggle("active", b.dataset.nav === name ||
+      (name === "smtp-help" && b.dataset.nav === "settings")));  // 帮助视图归属设置页高亮
   if (name === "calendar") refreshCalendar();   // 每次切入拉最新推算数据
   if (name === "subs") updateChipsOverflow();   // v1.6.14：hidden 时 scrollWidth=0，切入订阅页后重检渐隐兜底
+  if (name === "smtp-help") loadSmtpGuide();    // 教程内容按需拉取，本次会话只拉一次
 }
+
+let smtpGuideLoaded = false;
+async function loadSmtpGuide() {
+  const box = $("#smtp-help-content");
+  if (smtpGuideLoaded) return;
+  box.textContent = "加载中…";
+  try {
+    const res = await fetch("/help/smtp", { cache: "no-cache" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    box.innerHTML = await res.text();
+    smtpGuideLoaded = true;
+  } catch (e) {
+    box.innerHTML = '<p class="muted">教程加载失败，请检查服务是否正常后重试：' +
+      e.message + '</p>';
+  }
+}
+$("#link-smtp-guide").addEventListener("click", () => switchView("smtp-help"));
+$("#btn-smtp-back").addEventListener("click", () => switchView("settings"));
 document.querySelectorAll(".nav-btn").forEach((b) =>
   b.addEventListener("click", () => switchView(b.dataset.nav)));
 
