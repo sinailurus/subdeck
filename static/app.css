@@ -742,11 +742,18 @@ body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settin
 body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
   border-color: color-mix(in srgb, var(--line) 55%, transparent);
 }
-/* C 档下表单控件/小卡片微透，保持文字可读 */
-body[data-skin="glassplus"] .sub-card,
-body[data-skin="glassplus"] .modal input,
-body[data-skin="glassplus"] .modal select,
-body[data-skin="glassplus"] .modal textarea {
+/* C 档下订阅卡与大卡片同材质（半透明+毛玻璃），保持全页观感一致 */
+body[data-skin="glassplus"] .sub-card {
+  background: color-mix(in srgb, var(--card) 74%, transparent);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+}
+[data-theme="dark"] body[data-skin="glassplus"] .sub-card {
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+}
+/* C 档下表单控件微透，保持文字可读 */
+body[data-skin="glassplus"] :is(.modal input, .modal select, .modal textarea) {
   background: color-mix(in srgb, var(--card) 88%, transparent);
 }
 /* C 档下分段控件底与卡片同透 */
