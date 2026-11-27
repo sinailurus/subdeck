@@ -1,6 +1,6 @@
 spec_version: "2.1"
 app_id: com.sinailurus.subdeck
-version: 1.6.22-beta.1
+version: 1.6.22
 support_arch:
   - amd64
   - arm64
@@ -22,6 +22,8 @@ source_code_link:
   - https://github.com/sinailurus/subdeck
 privacy_policy_link:
   - https://github.com/sinailurus/subdeck/blob/main/static/privacy-policy.html
+technical_support_link:
+  - https://github.com/sinailurus/subdeck/issues
 parameters:
   - key: AUTH_PASSWORD
     type: password
@@ -52,7 +54,7 @@ i18n:
     description: SubDeck is a self-hosted subscription manager for your NAS. Keep track of billing cycles and costs for streaming, software, cloud storage and other subscriptions, with multi-currency conversion, a billing calendar, monthly-average stats and email reminders. Optional password protection and data backup are included. All data stays on your own NAS, with no third-party cloud dependency.
     author: sinailurus
     official: https://github.com/sinailurus/subdeck
-    help: https://github.com/sinailurus/subdeck/issues
+    help: https://github.com/sinailurus/subdeck/blob/main/docs/manual/subdeck-manual-en.pdf
     publisher: sinailurus
     publisher_link: https://github.com/sinailurus
   zh-CN:
@@ -60,6 +62,6 @@ i18n:
     description: SubDeck 是部署在自己 NAS 上的订阅管理工具，帮你把流媒体、软件、云存储等各类订阅的续费日期和花销统一管起来。支持多币种自动汇率折算、扣费日历、月均支出统计和到期邮件提醒，可设置登录密码保护，数据支持备份导出。所有数据均保存在 NAS 本地，不依赖第三方云服务。
     author: sinailurus
     official: https://github.com/sinailurus/subdeck
-    help: https://github.com/sinailurus/subdeck/issues
+    help: https://github.com/sinailurus/subdeck/blob/main/docs/manual/subdeck-manual-zh.pdf
     publisher: sinailurus
     publisher_link: https://github.com/sinailurus
