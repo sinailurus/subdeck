@@ -454,7 +454,7 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 .form-row { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .form-row.span-2 { grid-column: span 2; }
 .form-row label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
-.form-row input, .form-row select, .form-row textarea, .ics-row input {
+.form-row input, .form-row select, .form-row textarea {
   width: 100%; padding: 9px 12px;
   border: 1px solid var(--line); border-radius: 10px;
   background: var(--card); color: var(--text); font-size: 14px; font-family: inherit;
@@ -464,7 +464,7 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
    导致编辑弹窗「订阅进行中」复选框被拉成全宽巨型框（勾居中悬空、文字被挤右侧折行，PC/手机一致）。
    提高选择器优先级精准复位尺寸。 */
 .form-row .check-row input { width: 16px; height: 16px; padding: 0; flex: none; }
-.form-row input:focus, .form-row select:focus, .form-row textarea:focus, .ics-row input:focus {
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus {
   outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
   border-color: var(--primary);
 }
@@ -520,8 +520,6 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 /* ---------- 设置页 ---------- */
 /* v1.6.2 修复：面板限宽 640 但未居中，平板/手机宽视口（如切电脑 UA 后 ~980px）下贴左、右侧大片空白。margin-inline:auto 全断点统一居中 */
 .settings .panel { max-width: 640px; margin-inline: auto; }
-.ics-row { display: flex; gap: 8px; }
-.ics-row input { font-size: 12.5px; color: var(--muted); flex: 1; min-width: 0; }
 .settings-panel-gap { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 #view-settings .panel { max-width: 640px; margin-inline: auto; }
 #view-settings .btn { max-width: 220px; }
@@ -731,26 +729,33 @@ body[data-skin="glassplus"] #bg-layer { opacity: 1; }              /* C 重度�
 /* A 实色（solid）：默认卡片样式，无特殊处理 */
 /* B 点缀玻璃（glass，默认）：卡片保持实色，仅顶栏/底栏毛玻璃（已有），本次不改动 */
 /* C 重度玻璃（glassplus，实验性）：大卡片半透明毛玻璃，透出背景层 */
+/* 玻璃质感按定稿配方：深色底蓝黑+blur14/saturate135%+顶缘内高光+轻拟物投影+深色文字投影 */
 body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
   background: color-mix(in srgb, var(--card) 74%, transparent);
-  backdrop-filter: blur(16px) saturate(1.25);
-  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  backdrop-filter: blur(14px) saturate(1.35);
+  -webkit-backdrop-filter: blur(14px) saturate(1.35);
 }
 [data-theme="dark"] body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
-  background: color-mix(in srgb, var(--card) 62%, transparent);
+  background: rgba(16, 26, 42, .42);
 }
 body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
-  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+  border-color: color-mix(in srgb, var(--line) 22%, transparent);
+}
+[data-theme="dark"] body[data-skin="glassplus"] :is(.panel, .stat-card, .login-card, .modal, .settings-nav) {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .32);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
 }
 /* C 档下订阅卡与大卡片同材质（半透明+毛玻璃），保持全页观感一致 */
 body[data-skin="glassplus"] .sub-card {
   background: color-mix(in srgb, var(--card) 74%, transparent);
-  backdrop-filter: blur(16px) saturate(1.25);
-  -webkit-backdrop-filter: blur(16px) saturate(1.25);
-  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+  backdrop-filter: blur(14px) saturate(1.35);
+  -webkit-backdrop-filter: blur(14px) saturate(1.35);
+  border-color: color-mix(in srgb, var(--line) 22%, transparent);
 }
 [data-theme="dark"] body[data-skin="glassplus"] .sub-card {
-  background: color-mix(in srgb, var(--card) 62%, transparent);
+  background: rgba(16, 26, 42, .42);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .32);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
 }
 /* C 档下表单控件微透，保持文字可读 */
 body[data-skin="glassplus"] :is(.modal input, .modal select, .modal textarea) {
@@ -778,7 +783,7 @@ body[data-skin="glassplus"] .seg-btn.active { background: color-mix(in srgb, var
 .fx-bar {
   width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
   background: color-mix(in srgb, var(--accent) 7%, var(--card, #fff));
-  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border: none;
   border-radius: 12px; padding: 11px 14px; cursor: pointer; min-width: 0;
   color: var(--text); font: inherit; text-align: left;
 }
